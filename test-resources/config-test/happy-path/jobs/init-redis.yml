@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-redis
+spec:
+  template:
+    metadata:
+      name: init-redis
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init-redis
+          image: {{.redisSidecarImage}}

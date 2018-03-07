@@ -1,0 +1,173 @@
+package project
+
+import (
+	"sort"
+
+	"github.com/anduintransaction/rivendell/utils"
+	"github.com/palantir/stacktrace"
+)
+
+// ResourceGraph .
+type ResourceGraph struct {
+	ResourceGroups map[string]*ResourceGroup
+	RootNodes      []string
+}
+
+// ResourceGroup holds configuration for a resource group
+type ResourceGroup struct {
+	Name          string
+	ResourceFiles []*ResourceFile
+	Depend        []string
+	Wait          []string
+	Children      []string
+}
+
+// ResourceFile holds configuration for a single resource file.
+// There are maybe multiple resources in a resource file
+type ResourceFile struct {
+	FilePath   string
+	Resources  []*Resource
+	RawContent []byte
+}
+
+// Resource holds configuration for a single resource
+type Resource struct {
+	Filepath   string
+	Name       string
+	Kind       string
+	RawContent []byte
+}
+
+// ReadResourceGraph .
+func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConfig, variables map[string]string) (*ResourceGraph, error) {
+	resourceGraph := &ResourceGraph{
+		ResourceGroups: make(map[string]*ResourceGroup),
+		RootNodes:      []string{},
+	}
+	for _, resourceGroupConfig := range resourceGroupConfigs {
+		resourceGroup := &ResourceGroup{
+			Name:     resourceGroupConfig.Name,
+			Depend:   utils.NilArrayToEmpty(resourceGroupConfig.Depend),
+			Wait:     utils.NilArrayToEmpty(resourceGroupConfig.Wait),
+			Children: []string{},
+		}
+		resourceGraph.ResourceGroups[resourceGroup.Name] = resourceGroup
+		if len(resourceGroup.Depend) == 0 {
+			resourceGraph.RootNodes = append(resourceGraph.RootNodes, resourceGroup.Name)
+		}
+		includePatterns := utils.PrependPaths(rootDir, resourceGroupConfig.Resources)
+		excludePatterns := utils.PrependPaths(rootDir, resourceGroupConfig.Excludes)
+		resourceFiles, err := utils.GlobFiles(includePatterns, excludePatterns)
+		if err != nil {
+			return nil, err
+		}
+		for _, resourceFile := range resourceFiles {
+			fileContent, err := utils.ExecuteTemplate(resourceFile, variables)
+			if err != nil {
+				return nil, err
+			}
+			rf := &ResourceFile{
+				FilePath:   resourceFile,
+				RawContent: fileContent,
+			}
+			resourceGroup.ResourceFiles = append(resourceGroup.ResourceFiles, rf)
+		}
+	}
+	sort.Strings(resourceGraph.RootNodes)
+	err := resourceGraph.resolveChildren()
+	if err != nil {
+		return nil, err
+	}
+	err = resourceGraph.cyclicCheck()
+	if err != nil {
+		return nil, err
+	}
+	return resourceGraph, nil
+}
+
+// Walk through the graph, BFS style
+func (rg *ResourceGraph) Walk(f func(g *ResourceGroup) error) error {
+	candidates := []string{}
+	for _, candidate := range rg.RootNodes {
+		candidates = append(candidates, candidate)
+	}
+	visited := utils.NewStringSet()
+	for len(candidates) > 0 {
+		current := candidates[0]
+		if !visited.Exists(current) {
+			depVisited := true
+			for _, dep := range rg.ResourceGroups[current].Depend {
+				if !visited.Exists(dep) {
+					depVisited = false
+					break
+				}
+			}
+			if depVisited {
+				err := f(rg.ResourceGroups[current])
+				if err != nil {
+					return err
+				}
+				visited.Add(current)
+			}
+		}
+		candidates = append(candidates[1:], rg.ResourceGroups[current].Children...)
+	}
+	return nil
+}
+
+func (rg *ResourceGraph) resolveChildren() error {
+	for _, resourceGroup := range rg.ResourceGroups {
+		sort.Strings(resourceGroup.Depend)
+		for _, depend := range resourceGroup.Depend {
+			parent, ok := rg.ResourceGroups[depend]
+			if !ok {
+				return stacktrace.Propagate(ErrMissingDependency{resourceGroup.Name, depend}, "missing dependency")
+			}
+			parent.Children = append(parent.Children, resourceGroup.Name)
+		}
+	}
+	for _, resourceGroup := range rg.ResourceGroups {
+		sort.Strings(resourceGroup.Children)
+	}
+	return nil
+}
+
+func (rg *ResourceGraph) cyclicCheck() error {
+	if len(rg.ResourceGroups) == 0 {
+		return nil
+	}
+	white := make(utils.StringSet)
+	gray := make(utils.StringSet)
+	black := make(utils.StringSet)
+	for name := range rg.ResourceGroups {
+		white.Add(name)
+	}
+	for len(white) > 0 {
+		current := white.First()
+		err := rg.cyclicDFS(current, white, gray, black)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (rg *ResourceGraph) cyclicDFS(current string, white, gray, black utils.StringSet) error {
+	white.Remove(current)
+	gray.Add(current)
+	for _, neighbor := range rg.ResourceGroups[current].Children {
+		if black.Exists(neighbor) {
+			continue
+		}
+		if gray.Exists(neighbor) {
+			return stacktrace.Propagate(ErrCyclicDependency{neighbor}, "cyclic dependency found for %q", neighbor)
+		}
+		err := rg.cyclicDFS(neighbor, white, gray, black)
+		if err != nil {
+			return err
+		}
+	}
+	gray.Remove(current)
+	black.Add(current)
+	return nil
+}

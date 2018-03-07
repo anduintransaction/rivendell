@@ -1,0 +1,42 @@
+root_dir: .
+namespace: coruscant
+prepull_images: true
+variables:
+  postgresTag: {{.postgresImageTag}}
+  redisTag: 4-alpine
+  postgresSidecarImage: postgres-sidecar:{{.appTag}}
+  redisSidecarImage: redis-sidecar:{{.appTag}}
+credentials:
+  - username: ${DOCKERHUB_USERNAME}
+    password: ${DOCKERHUB_PASSWORD}
+  - username: _json_key
+    password_file: credentials/password
+    host: https://gcr.io
+resource_groups:
+  - name: configs
+    resources:
+      - ./configs/*.yml
+    excludes:
+      - ./configs/*ignore*
+  - name: secrets
+    resources:
+      - ./secrets/*.yml
+  - name: databases
+    resources:
+      - ./databases/*.yml
+    depend:
+      - configs
+      - secrets
+  - name: init-jobs
+    resources:
+      - ./jobs/*.yml
+    depend:
+      - databases
+  - name: services
+    resources:
+      - ./services/*.yml
+    depend:
+      - init-jobs
+    wait:
+      - init-postgres
+      - init-redis

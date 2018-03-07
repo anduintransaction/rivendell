@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-postgres
+spec:
+  template:
+    metadata:
+      name: init-postgres
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: init-postgres
+          image: {{.postgresSidecarImage}}
+          env:
+            - name: PGDATA
+              valueFrom:
+                configMapKeyRef:
+                  name: postgres
+                  key: pgdata
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres
+                  key: pguser
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres
+                  key: pgpassword
