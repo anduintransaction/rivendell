@@ -1,10 +1,14 @@
 package project
 
 import (
+	"bufio"
+	"bytes"
 	"sort"
+	"strings"
 
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/palantir/stacktrace"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // ResourceGraph .
@@ -27,7 +31,7 @@ type ResourceGroup struct {
 type ResourceFile struct {
 	FilePath   string
 	Resources  []*Resource
-	RawContent []byte
+	RawContent string
 }
 
 // Resource holds configuration for a single resource
@@ -35,7 +39,16 @@ type Resource struct {
 	Filepath   string
 	Name       string
 	Kind       string
-	RawContent []byte
+	RawContent string
+}
+
+type resourceYAML struct {
+	Kind     string                `yaml:"kind"`
+	Metadata *resourceMetadataYAML `yaml:"metadata"`
+}
+
+type resourceMetadataYAML struct {
+	Name string `yaml:"name"`
 }
 
 // ReadResourceGraph .
@@ -68,7 +81,11 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 			}
 			rf := &ResourceFile{
 				FilePath:   resourceFile,
-				RawContent: fileContent,
+				RawContent: resourceGraph.removeNamespace(string(fileContent)),
+			}
+			err = resourceGraph.splitResourceFile(rf)
+			if err != nil {
+				return nil, err
 			}
 			resourceGroup.ResourceFiles = append(resourceGroup.ResourceFiles, rf)
 		}
@@ -111,6 +128,41 @@ func (rg *ResourceGraph) Walk(f func(g *ResourceGroup) error) error {
 			}
 		}
 		candidates = append(candidates[1:], rg.ResourceGroups[current].Children...)
+	}
+	return nil
+}
+
+func (rg *ResourceGraph) removeNamespace(content string) string {
+	scanner := bufio.NewScanner(bytes.NewBuffer([]byte(content)))
+	strippedContent := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(strings.TrimSpace(line), "namespace:") {
+			strippedContent += line + "\n"
+		}
+	}
+	return strippedContent
+}
+
+func (rg *ResourceGraph) splitResourceFile(resourceFile *ResourceFile) error {
+	parts := strings.Split(string(resourceFile.RawContent), "---\n")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if len(part) == 0 {
+			continue
+		}
+		parsedResource := &resourceYAML{}
+		err := yaml.Unmarshal([]byte(part), parsedResource)
+		if err != nil {
+			return err
+		}
+		resource := &Resource{
+			Name:       parsedResource.Metadata.Name,
+			Kind:       parsedResource.Kind,
+			Filepath:   resourceFile.FilePath,
+			RawContent: part,
+		}
+		resourceFile.Resources = append(resourceFile.Resources, resource)
 	}
 	return nil
 }

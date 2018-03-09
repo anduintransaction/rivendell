@@ -73,6 +73,13 @@ func (s *ProjectTestSuite) TestReadProject() {
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "configs", "postgres-configs.yml"),
+						Resources: []*Resource{
+							&Resource{
+								Name:     "postgres",
+								Kind:     "ConfigMap",
+								Filepath: filepath.Join(projectDir, "configs", "postgres-configs.yml"),
+							},
+						},
 					},
 				},
 				Children: []string{"databases"},
@@ -84,6 +91,13 @@ func (s *ProjectTestSuite) TestReadProject() {
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "secrets", "postgres-secrets.yml"),
+						Resources: []*Resource{
+							&Resource{
+								Name:     "postgres",
+								Kind:     "Secret",
+								Filepath: filepath.Join(projectDir, "secrets", "postgres-secrets.yml"),
+							},
+						},
 					},
 				},
 				Children: []string{"databases"},
@@ -95,9 +109,33 @@ func (s *ProjectTestSuite) TestReadProject() {
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "databases", "postgres.yml"),
+						Resources: []*Resource{
+							&Resource{
+								Name:     "postgres",
+								Kind:     "Deployment",
+								Filepath: filepath.Join(projectDir, "databases", "postgres.yml"),
+							},
+							&Resource{
+								Name:     "postgres",
+								Kind:     "Service",
+								Filepath: filepath.Join(projectDir, "databases", "postgres.yml"),
+							},
+						},
 					},
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "databases", "redis.yml"),
+						Resources: []*Resource{
+							&Resource{
+								Name:     "redis",
+								Kind:     "Deployment",
+								Filepath: filepath.Join(projectDir, "databases", "redis.yml"),
+							},
+							&Resource{
+								Name:     "redis",
+								Kind:     "Service",
+								Filepath: filepath.Join(projectDir, "databases", "redis.yml"),
+							},
+						},
 					},
 				},
 				Children: []string{"init-jobs"},
@@ -109,9 +147,23 @@ func (s *ProjectTestSuite) TestReadProject() {
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "jobs", "init-postgres.yml"),
+						Resources: []*Resource{
+							&Resource{
+								Name:     "init-postgres",
+								Kind:     "Job",
+								Filepath: filepath.Join(projectDir, "jobs", "init-postgres.yml"),
+							},
+						},
 					},
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "jobs", "init-redis.yml"),
+						Resources: []*Resource{
+							&Resource{
+								Name:     "init-redis",
+								Kind:     "Job",
+								Filepath: filepath.Join(projectDir, "jobs", "init-redis.yml"),
+							},
+						},
 					},
 				},
 				Children: []string{"services"},
@@ -123,6 +175,18 @@ func (s *ProjectTestSuite) TestReadProject() {
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "services", "app.yml"),
+						Resources: []*Resource{
+							&Resource{
+								Name:     "app",
+								Kind:     "Deployment",
+								Filepath: filepath.Join(projectDir, "services", "app.yml"),
+							},
+							&Resource{
+								Name:     "app",
+								Kind:     "Service",
+								Filepath: filepath.Join(projectDir, "services", "app.yml"),
+							},
+						},
 					},
 				},
 				Children: []string{},
@@ -157,6 +221,15 @@ func (s *ProjectTestSuite) TestReadProject() {
 		"image: ",
 		"image: app:1.1.4",
 	)
+
+	expectedConfigContent := `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres
+data:
+  pgdata: /data/postgres
+`
+	require.Equal(s.T(), expectedConfigContent, project.resourceGraph.ResourceGroups["configs"].ResourceFiles[0].RawContent)
 }
 
 func (s *ProjectTestSuite) stripResourceContent(resourceGraph *ResourceGraph) *ResourceGraph {
@@ -168,17 +241,17 @@ func (s *ProjectTestSuite) stripResourceContent(resourceGraph *ResourceGraph) *R
 	require.Nil(s.T(), err)
 	for _, rg := range strippedGraph.ResourceGroups {
 		for _, rf := range rg.ResourceFiles {
-			rf.RawContent = nil
+			rf.RawContent = ""
 			for _, r := range rf.Resources {
-				r.RawContent = nil
+				r.RawContent = ""
 			}
 		}
 	}
 	return strippedGraph
 }
 
-func (s *ProjectTestSuite) verifyVariableValue(rawContent []byte, search, expectedValue string) {
-	scanner := bufio.NewScanner(bytes.NewReader(rawContent))
+func (s *ProjectTestSuite) verifyVariableValue(rawContent string, search, expectedValue string) {
+	scanner := bufio.NewScanner(bytes.NewReader([]byte(rawContent)))
 	found := false
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
