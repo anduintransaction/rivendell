@@ -52,18 +52,6 @@ func (s *ProjectTestSuite) TestReadProject() {
 		"rivendellVarKubeConfig": kubeConfig,
 	}
 	require.Equal(s.T(), expectedVariables, project.variables)
-	expectedCredentials := []*DockerCredential{
-		&DockerCredential{
-			Username: "luke-skywalker",
-			Password: "tatooine",
-		},
-		&DockerCredential{
-			Username: "_json_key",
-			Password: "Order 66",
-			Host:     "https://gcr.io",
-		},
-	}
-	require.Equal(s.T(), expectedCredentials, project.credentials)
 	expectedResourceGraph := &ResourceGraph{
 		ResourceGroups: map[string]*ResourceGroup{
 			"configs": &ResourceGroup{

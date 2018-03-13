@@ -29,25 +29,13 @@ func (s *ConfigTestSuite) TestReadProjectConfig() {
 	projectConfig, err := ReadProjectConfig(projectFile, variables)
 	require.Nil(s.T(), err, "should read project config successfully")
 	expected := &Config{
-		RootDir:       ".",
-		Namespace:     "coruscant",
-		PrepullImages: true,
+		RootDir:   ".",
+		Namespace: "coruscant",
 		Variables: map[string]string{
 			"postgresTag":          "9.6",
 			"redisTag":             "4-alpine",
 			"postgresSidecarImage": "postgres-sidecar:1.1.4",
 			"redisSidecarImage":    "redis-sidecar:1.1.4",
-		},
-		Credentials: []*CredentialConfig{
-			&CredentialConfig{
-				Username: "luke-skywalker",
-				Password: "tatooine",
-			},
-			&CredentialConfig{
-				Username:     "_json_key",
-				PasswordFile: "credentials/password",
-				Host:         "https://gcr.io",
-			},
 		},
 		ResourceGroups: []*ResourceGroupConfig{
 			&ResourceGroupConfig{

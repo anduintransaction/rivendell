@@ -16,7 +16,7 @@ clean:
 
 dist: clean build .dist-prepare .dist-mac .dist-linux
 
-test: .test-project
+test: .test-project .test-utils .test-kubernetes
 
 .dist-prepare:
 	rm -rf ${DIST}
@@ -38,3 +38,9 @@ test: .test-project
 
 .test-project:
 	go test ./project -v
+
+.test-utils:
+	go test ./utils -v
+
+.test-kubernetes:
+	go test ./kubernetes -v

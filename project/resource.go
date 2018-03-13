@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/anduintransaction/rivendell/kubernetes"
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/palantir/stacktrace"
 	yaml "gopkg.in/yaml.v2"
@@ -129,6 +130,31 @@ func (rg *ResourceGraph) Walk(f func(g *ResourceGroup) error) error {
 		}
 		candidates = append(candidates[1:], rg.ResourceGroups[current].Children...)
 	}
+	return nil
+}
+
+// WalkResource .
+func (rg *ResourceGraph) WalkResource(f func(r *Resource, g *ResourceGroup) error) error {
+	return rg.Walk(func(g *ResourceGroup) error {
+		for _, rf := range g.ResourceFiles {
+			for _, r := range rf.Resources {
+				err := f(r, g)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// Exists .
+func (r *Resource) Exists(kubeContext *kubernetes.Context) error {
+	return nil
+}
+
+// Create .
+func (r *Resource) Create(kubeContext *kubernetes.Context) error {
 	return nil
 }
 

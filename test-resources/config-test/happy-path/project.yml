@@ -1,17 +1,10 @@
 root_dir: .
 namespace: coruscant
-prepull_images: true
 variables:
   postgresTag: {{.postgresImageTag}}
   redisTag: 4-alpine
   postgresSidecarImage: postgres-sidecar:{{.appTag}}
   redisSidecarImage: redis-sidecar:{{.appTag}}
-credentials:
-  - username: ${DOCKERHUB_USERNAME}
-    password: ${DOCKERHUB_PASSWORD}
-  - username: _json_key
-    password_file: credentials/password
-    host: https://gcr.io
 resource_groups:
   - name: configs
     resources:

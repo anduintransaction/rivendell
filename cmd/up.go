@@ -1,4 +1,4 @@
-// Copyright © 2018 NAME HERE <EMAIL ADDRESS>
+// Copyright © 2018 Anduin Transactions Inc
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,15 +15,26 @@
 package cmd
 
 import (
+	"github.com/anduintransaction/rivendell/project"
+	"github.com/anduintransaction/rivendell/utils"
 	"github.com/spf13/cobra"
 )
 
 // upCmd represents the up command
 var upCmd = &cobra.Command{
-	Use:   "up",
-	Short: "Execute a rivendell task",
-	Long:  "Execute a rivendell task",
+	Use:   "up [project file]",
+	Short: "Create all resources defined in a rivendell project file",
+	Long:  "Create all resources defined in a rivendell project file",
+	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
+		p, err := project.ReadProject(args[0], namespace, context, kubeConfig, variableMap)
+		if err != nil {
+			utils.Fatal(err)
+		}
+		err = p.Up()
+		if err != nil {
+			utils.Fatal(err)
+		}
 	},
 }
 
