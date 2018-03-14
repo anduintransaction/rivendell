@@ -68,6 +68,13 @@ func (cmd *Command) RedirectToStandard() {
 	cmd.SetStderr(os.Stderr)
 }
 
+// SilenceOutput .
+func (cmd *Command) SilenceOutput() {
+	w := &nullWriter{}
+	cmd.SetStdout(w)
+	cmd.SetStderr(w)
+}
+
 // Run the command.
 // If the command exit non-zero, the returned error is still nil.
 func (cmd *Command) Run() (*CommandStatus, error) {
@@ -98,8 +105,13 @@ func (cmd *Command) Run() (*CommandStatus, error) {
 
 // ExecuteCommand and redirect output to standard output/standard error
 func ExecuteCommand(command string, args ...string) (*CommandStatus, error) {
+	silentFlag := os.Getenv("SILENCE_OUTPUT")
 	cmd := NewCommand(command, args...)
-	cmd.RedirectToStandard()
+	if silentFlag == "true" || silentFlag == "1" {
+		cmd.SilenceOutput()
+	} else {
+		cmd.RedirectToStandard()
+	}
 	return cmd.Run()
 }
 

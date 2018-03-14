@@ -1,6 +1,14 @@
 package kubernetes
 
-import "os"
+import (
+	"os"
+	"time"
+)
+
+const (
+	defaultTerminateInterval   = 3 * time.Second
+	defaultTerminateCheckLimit = 10
+)
 
 func testEnable() bool {
 	kubernetesTestValue := os.Getenv("KUBERNETES_TEST_ENABLE")

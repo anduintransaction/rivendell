@@ -65,7 +65,8 @@ func (p *Project) Up() error {
 	if err != nil {
 		return err
 	}
-	err = kubeContext.Namespace().Create()
+	p.printCommonInfo()
+	err = p.createNamespace(kubeContext)
 	if err != nil {
 		return err
 	}
@@ -107,11 +108,33 @@ func (p *Project) resolveResourceGraph(resourceGroupConfigs []*ResourceGroupConf
 }
 
 func (p *Project) printCommonInfo() {
-	utils.Info("Using namespace %q", p.namespace)
-	utils.Info("Using context %q", p.context)
-	utils.Info("Using kubernetes config file %q", p.kubeConfig)
+	utils.Info("Using namespace %q\n", p.namespace)
+	utils.Info("Using context %q\n", p.context)
+	utils.Info("Using kubernetes config file %q\n", p.kubeConfig)
 }
 
 func (p *Project) createNamespace(kubeContext *kubernetes.Context) error {
+	utils.Info("Creating namespace %q\n", p.namespace)
+	exists, err := kubeContext.Namespace().Create()
+	if err != nil {
+		return err
+	}
+	p.printCreateResult(exists)
 	return nil
+}
+
+func (p *Project) printCreateResult(exists bool) {
+	if exists {
+		utils.Warn("====> Existed\n")
+	} else {
+		utils.Success("====> Success\n")
+	}
+}
+
+func (p *Project) printDeleteResult(exists bool) {
+	if exists {
+		utils.Success("====> Success\n")
+	} else {
+		utils.Warn("====> Not exist\n")
+	}
 }
