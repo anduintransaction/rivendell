@@ -6,7 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/anduintransaction/rivendell/kubernetes"
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/palantir/stacktrace"
 	yaml "gopkg.in/yaml.v2"
@@ -146,16 +145,6 @@ func (rg *ResourceGraph) WalkResource(f func(r *Resource, g *ResourceGroup) erro
 		}
 		return nil
 	})
-}
-
-// Exists .
-func (r *Resource) Exists(kubeContext *kubernetes.Context) error {
-	return nil
-}
-
-// Create .
-func (r *Resource) Create(kubeContext *kubernetes.Context) error {
-	return nil
 }
 
 func (rg *ResourceGraph) removeNamespace(content string) string {

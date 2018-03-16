@@ -42,6 +42,16 @@ func NewCommand(name string, args ...string) *Command {
 	return cmd
 }
 
+// SetStdin .
+func (cmd *Command) SetStdin(content []byte) {
+	cmd.execCmd.Stdin = bytes.NewBuffer(content)
+}
+
+// SetStdinReader .
+func (cmd *Command) SetStdinReader(r io.Reader) {
+	cmd.execCmd.Stdin = r
+}
+
 // SetStdout .
 func (cmd *Command) SetStdout(w io.Writer) {
 	cmd.execCmd.Stdout = w

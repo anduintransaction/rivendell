@@ -61,6 +61,6 @@ func (s *NamespaceTestSuite) TestCreateAndDelete() {
 	require.False(s.T(), exists, "delete again should be fine")
 }
 
-func TestCommand(t *testing.T) {
+func TestNamespace(t *testing.T) {
 	suite.Run(t, new(NamespaceTestSuite))
 }

@@ -71,8 +71,7 @@ func (p *Project) Up() error {
 		return err
 	}
 	return p.resourceGraph.WalkResource(func(r *Resource, g *ResourceGroup) error {
-		utils.Info("Creating %s %q in group %q\n", r.Kind, r.Name, g.Name)
-		return r.Create(kubeContext)
+		return p.createResource(kubeContext, g, r)
 	})
 }
 
@@ -116,6 +115,16 @@ func (p *Project) printCommonInfo() {
 func (p *Project) createNamespace(kubeContext *kubernetes.Context) error {
 	utils.Info("Creating namespace %q\n", p.namespace)
 	exists, err := kubeContext.Namespace().Create()
+	if err != nil {
+		return err
+	}
+	p.printCreateResult(exists)
+	return nil
+}
+
+func (p *Project) createResource(kubeContext *kubernetes.Context, g *ResourceGroup, r *Resource) error {
+	utils.Info("Creating %s %q in group %q\n", r.Kind, r.Name, g.Name)
+	exists, err := kubeContext.Resource().Create(r.Name, r.Kind, r.RawContent)
 	if err != nil {
 		return err
 	}

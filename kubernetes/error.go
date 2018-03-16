@@ -2,9 +2,6 @@ package kubernetes
 
 import (
 	"fmt"
-	"io/ioutil"
-
-	"github.com/anduintransaction/rivendell/utils"
 )
 
 // ErrMissingCommand .
@@ -22,11 +19,6 @@ type ErrCommandExecute struct {
 	Output   string
 }
 
-func commandErrorFromStatus(status *utils.CommandStatus) ErrCommandExecute {
-	output, _ := ioutil.ReadAll(status.Stdout)
-	return ErrCommandExecute{status.ExitCode, string(output)}
-}
-
 func (err ErrCommandExecute) Error() string {
 	return fmt.Sprintf("execute command error, exit code: %d, output: %q", err.ExitCode, err.Output)
 }
@@ -38,6 +30,16 @@ type ErrCommandExitCode struct {
 
 func (err ErrCommandExitCode) Error() string {
 	return fmt.Sprintf("execute command error, exit code: %d", err.ExitCode)
+}
+
+// ErrInvalidResponse .
+type ErrInvalidResponse struct {
+	Underlying error
+	Response   string
+}
+
+func (err ErrInvalidResponse) Error() string {
+	return fmt.Sprintf("invalid response, error is %s, response is: %q", err.Underlying, err.Response)
 }
 
 // ErrUnknownStatus .

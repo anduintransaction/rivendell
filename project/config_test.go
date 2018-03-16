@@ -1,7 +1,6 @@
 package project
 
 import (
-	"os"
 	"path/filepath"
 	"testing"
 
@@ -24,8 +23,6 @@ func (s *ConfigTestSuite) TestReadProjectConfig() {
 		"postgresImageTag": "9.6",
 		"appTag":           "1.1.4",
 	}
-	os.Setenv("DOCKERHUB_USERNAME", "luke-skywalker")
-	os.Setenv("DOCKERHUB_PASSWORD", "tatooine")
 	projectConfig, err := ReadProjectConfig(projectFile, variables)
 	require.Nil(s.T(), err, "should read project config successfully")
 	expected := &Config{
