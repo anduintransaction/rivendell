@@ -83,6 +83,31 @@ roleRef:
 	s.testStaticResource("service", "service", "service.yml")
 }
 
+func (s *ResourceTestSuite) TestPodBasedResource() {
+	if !testEnable() {
+		fmt.Println("Skipping pod-based resource test")
+		return
+	}
+	s.testPodBasedResource("cronjob", "cronjob", "cronjob.yml")
+	s.testPodBasedResource("daemonset", "daemonset", "daemonset.yml")
+	s.testPodBasedResource("deployment", "deployment", "deployment.yml")
+	s.testPodBasedResource("job", "job", "job.yml")
+	s.testPodBasedResource("statefulset", "statefulset", "statefulset.yml")
+}
+
+func (s *ResourceTestSuite) TestPodResource() {
+	// if !testEnable() {
+	// 	fmt.Println("Skipping pod-based resource test")
+	// 	return
+	// }
+	s.testPodResource("happy", "pod", "happy.yml")
+	s.testPodResource("start-slow", "pod", "start-slow.yml")
+	s.testPodResource("stop-slow", "pod", "stop-slow.yml")
+	s.testPodResource("stop-slow", "pod", "stop-slow.yml")
+	s.testPodResource("completed", "pod", "completed.yml")
+	s.testPodResource("error", "pod", "error.yml")
+}
+
 func (s *ResourceTestSuite) testClusterResource(name, kind, content string) {
 	s.createClusterResource(name, kind, content)
 	s.verifyExists(name, kind)
@@ -101,34 +126,82 @@ func (s *ResourceTestSuite) testStaticResource(name, kind, filename string) {
 	s.redeleteResource(name, kind)
 }
 
+func (s *ResourceTestSuite) testPodBasedResource(name, kind, filename string) {
+	s.createPodBasedResource(name, kind, filename)
+	s.verifyExists(name, kind)
+	s.recreatePodBasedResource(name, kind, filename)
+	s.deleteResource(name, kind)
+	s.verifyNotExists(name, kind)
+	s.redeleteResource(name, kind)
+}
+
+func (s *ResourceTestSuite) testPodResource(name, kind, filename string) {
+	s.createPodResource(name, kind, filename)
+	s.verifyExists(name, kind)
+	s.recreatePodResource(name, kind, filename)
+	s.deleteResource(name, kind)
+	s.verifyNotExists(name, kind)
+	s.redeleteResource(name, kind)
+}
+
 func (s *ResourceTestSuite) createClusterResource(name, kind, content string) {
-	exists, err := s.kubeContext.Resource().Create(name, kind, string(content))
-	require.Nil(s.T(), err, "should create %s %q", kind, name)
-	require.False(s.T(), exists, "should create %s %q", kind, name)
+	s.createResourceFromContent(name, kind, content, false)
 }
 
 func (s *ResourceTestSuite) recreateClusterResource(name, kind, content string) {
+	s.createResourceFromContent(name, kind, content, true)
+}
+
+func (s *ResourceTestSuite) createResourceFromContent(name, kind, content string, expectedExists bool) {
 	exists, err := s.kubeContext.Resource().Create(name, kind, string(content))
-	require.Nil(s.T(), err, "should recreate %s %q", kind, name)
-	require.True(s.T(), exists, "should recreate %s %q", kind, name)
+	create := "create"
+	if expectedExists {
+		create = "recreate"
+	}
+	require.Nil(s.T(), err, "should %s %s %q", create, kind, name)
+	require.Equal(s.T(), expectedExists, exists, "should %s %s %q", create, kind, name)
 }
 
 func (s *ResourceTestSuite) createStaticResource(name, kind, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "static", filename)
-	content, err := ioutil.ReadFile(path)
-	require.Nil(s.T(), err, "should read %q", path)
-	exists, err := s.kubeContext.Resource().Create(name, kind, string(content))
-	require.Nil(s.T(), err, "should create %s %q", kind, name)
-	require.False(s.T(), exists, "should create %s %q", kind, name)
+	s.createResourceFromFile(name, kind, path, false)
 }
 
 func (s *ResourceTestSuite) recreateStaticResource(name, kind, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "static", filename)
+	s.createResourceFromFile(name, kind, path, true)
+}
+
+func (s *ResourceTestSuite) createPodBasedResource(name, kind, filename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", filename)
+	s.createResourceFromFile(name, kind, path, false)
+}
+
+func (s *ResourceTestSuite) recreatePodBasedResource(name, kind, filename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", filename)
+	s.createResourceFromFile(name, kind, path, true)
+}
+
+func (s *ResourceTestSuite) createPodResource(name, kind, filename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod", filename)
+	s.createResourceFromFile(name, kind, path, false)
+}
+
+func (s *ResourceTestSuite) recreatePodResource(name, kind, filename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod", filename)
+	s.createResourceFromFile(name, kind, path, true)
+}
+
+func (s *ResourceTestSuite) createResourceFromFile(name, kind, path string, expectedExists bool) {
 	content, err := ioutil.ReadFile(path)
 	require.Nil(s.T(), err, "should read %q", path)
 	exists, err := s.kubeContext.Resource().Create(name, kind, string(content))
-	require.Nil(s.T(), err, "should recreate %s %q", kind, name)
-	require.True(s.T(), exists, "should recreate %s %q", kind, name)
+	create := "create"
+	if expectedExists {
+		create = "recreate"
+	}
+	require.Nil(s.T(), err, "should %s %s %q", create, kind, name)
+	require.Equal(s.T(), expectedExists, exists, "should %s %s %q", create, kind, name)
 }
 
 func (s *ResourceTestSuite) verifyExists(name, kind string) {

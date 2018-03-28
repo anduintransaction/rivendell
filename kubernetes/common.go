@@ -8,6 +8,8 @@ import (
 const (
 	defaultTerminateInterval   = 3 * time.Second
 	defaultTerminateCheckLimit = 10
+	defaultPendingInterval     = 3 * time.Second
+	defaultPendingCheckLimit   = 40
 )
 
 func testEnable() bool {

@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -32,8 +31,6 @@ func (s *ProjectTestSuite) TestReadProject() {
 		"postgresImageTag": "9.6",
 		"appTag":           "1.1.4",
 	}
-	os.Setenv("DOCKERHUB_USERNAME", "luke-skywalker")
-	os.Setenv("DOCKERHUB_PASSWORD", "tatooine")
 	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
 	require.Nil(s.T(), err, "should read project file successfully")
 	require.Equal(s.T(), projectDir, project.rootDir)

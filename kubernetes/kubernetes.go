@@ -137,9 +137,9 @@ type kubernetesResourceStatus struct {
 type rsStatus int
 
 const (
-	rsStatusNotExist rsStatus = iota
+	rsStatusUnknown rsStatus = iota
+	rsStatusNotExist
 	rsStatusPending
-	rsStatusTerminating
 	rsStatusActive
-	rsStatusUnknown
+	rsStatusTerminating
 )

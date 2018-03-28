@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: completed
+spec:
+  restartPolicy: Never
+  containers:
+    - name: completed
+      image: busybox
+      args:
+        - "true"

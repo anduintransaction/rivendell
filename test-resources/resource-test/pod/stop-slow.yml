@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: stop-slow
+spec:
+  containers:
+    - name: stop-slow
+      image: busybox
+      args:
+        - sh
+        - -c
+        - sleep 1000

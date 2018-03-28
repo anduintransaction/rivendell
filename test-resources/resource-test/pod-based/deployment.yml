@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: deployment
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        name: deployment
+    spec:
+      containers:
+        - name: deployment
+          image: nginx
+  revisionHistoryLimit: 10
