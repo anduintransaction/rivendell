@@ -1,0 +1,23 @@
+root_dir: .
+namespace: your_namespace
+variables:
+  dynamicVar: '{{.dynamicVar}}'
+  envKey: ${ENV_VAR}
+  key: value
+resource_groups:
+- name: group1
+  resources:
+  - path/to/group1/*.yml
+  excludes:
+  - path/to/group1/exclude*
+  depend: []
+  wait: []
+- name: group2
+  resources:
+  - path/to/group2/*.yml
+  excludes:
+  - '**/exclude*'
+  depend:
+  - group1
+  wait:
+  - job1
