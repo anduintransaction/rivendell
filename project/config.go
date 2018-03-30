@@ -1,6 +1,8 @@
 package project
 
 import (
+	"io"
+
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/palantir/stacktrace"
 	yaml "gopkg.in/yaml.v2"
@@ -35,4 +37,13 @@ func ReadProjectConfig(projectFile string, variables map[string]string) (*Config
 		return nil, stacktrace.Propagate(err, "cannot parse yaml configuration")
 	}
 	return projectConfig, nil
+}
+
+func (c *Config) Write(w io.Writer) error {
+	out, err := yaml.Marshal(c)
+	if err != nil {
+		return stacktrace.Propagate(err, "cannot encode config")
+	}
+	_, err = w.Write(out)
+	return stacktrace.Propagate(err, "cannot write config")
 }

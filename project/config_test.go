@@ -13,7 +13,7 @@ type ConfigTestSuite struct {
 	resourceRoot string
 }
 
-func (s *ConfigTestSuite) SetupTest() {
+func (s *ConfigTestSuite) SetupSuite() {
 	s.resourceRoot = "../test-resources"
 }
 
