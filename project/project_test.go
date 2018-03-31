@@ -178,6 +178,7 @@ func (s *ProjectTestSuite) TestReadProject() {
 			},
 		},
 		RootNodes: []string{"configs", "secrets"},
+		LeafNodes: []string{"services"},
 	}
 	require.Equal(s.T(), expectedResourceGraph, s.stripResourceContent(project.resourceGraph))
 

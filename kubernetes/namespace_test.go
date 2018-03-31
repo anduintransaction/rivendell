@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anduintransaction/rivendell/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -14,7 +15,7 @@ type NamespaceTestSuite struct {
 }
 
 func (s *NamespaceTestSuite) TestExists() {
-	if !testEnable() {
+	if !utils.TestEnable() {
 		fmt.Println("Skipping namespace test exists")
 		return
 	}
@@ -30,7 +31,7 @@ func (s *NamespaceTestSuite) TestExists() {
 }
 
 func (s *NamespaceTestSuite) TestCreateAndDelete() {
-	if !testEnable() {
+	if !utils.TestEnable() {
 		fmt.Println("Skipping namespace test create and delete")
 		return
 	}

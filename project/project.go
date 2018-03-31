@@ -3,9 +3,16 @@ package project
 import (
 	"fmt"
 	"path/filepath"
+	"time"
 
 	"github.com/anduintransaction/rivendell/kubernetes"
 	"github.com/anduintransaction/rivendell/utils"
+	"github.com/palantir/stacktrace"
+)
+
+const (
+	waitDelay = 3 * time.Second
+	waitCount = 10
 )
 
 // Project holds configuration for a rivendell task
@@ -44,7 +51,7 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 // Debug .
 func (p *Project) Debug() {
 	p.printCommonInfo()
-	p.resourceGraph.Walk(func(g *ResourceGroup) error {
+	p.resourceGraph.WalkForward(func(g *ResourceGroup) error {
 		utils.Info("Resource group %q\n", g.Name)
 		for _, rf := range g.ResourceFiles {
 			utils.Info2("Resource file %q\n", rf.FilePath)
@@ -70,8 +77,24 @@ func (p *Project) Up() error {
 	if err != nil {
 		return err
 	}
-	return p.resourceGraph.WalkResource(func(r *Resource, g *ResourceGroup) error {
+	return p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
 		return p.createResource(kubeContext, g, r)
+	}, func(r *Resource, g *ResourceGroup) error {
+		return p.waitForExists(kubeContext, r)
+	})
+}
+
+// Down .
+func (p *Project) Down() error {
+	kubeContext, err := kubernetes.NewContext(p.namespace, p.context, p.kubeConfig)
+	if err != nil {
+		return err
+	}
+	p.printCommonInfo()
+	return p.resourceGraph.WalkResourceBackward(func(r *Resource, g *ResourceGroup) error {
+		return p.deleteResource(kubeContext, g, r)
+	}, func(r *Resource, g *ResourceGroup) error {
+		return p.waitForDeleted(kubeContext, r)
 	})
 }
 
@@ -130,6 +153,52 @@ func (p *Project) createResource(kubeContext *kubernetes.Context, g *ResourceGro
 	}
 	p.printCreateResult(exists)
 	return nil
+}
+
+func (p *Project) deleteResource(kubeContext *kubernetes.Context, g *ResourceGroup, r *Resource) error {
+	utils.Warn("Deleting %s %q in group %q\n", r.Kind, r.Name, g.Name)
+	exists, err := kubeContext.Resource().Delete(r.Name, r.Kind)
+	if err != nil {
+		return err
+	}
+	p.printDeleteResult(exists)
+	return nil
+}
+
+func (p *Project) waitForExists(kubeContext *kubernetes.Context, r *Resource) error {
+	count := 0
+	for {
+		exists, err := kubeContext.Resource().Exists(r.Name, r.Kind)
+		if err != nil {
+			return err
+		}
+		if exists {
+			return nil
+		}
+		count++
+		if count > waitCount {
+			return stacktrace.Propagate(ErrWaitTimeout{r.Name, r.Kind}, "wait timeout")
+		}
+		time.Sleep(waitDelay)
+	}
+}
+
+func (p *Project) waitForDeleted(kubeContext *kubernetes.Context, r *Resource) error {
+	count := 0
+	for {
+		exists, err := kubeContext.Resource().Exists(r.Name, r.Kind)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return nil
+		}
+		count++
+		if count > waitCount {
+			return stacktrace.Propagate(ErrWaitTimeout{r.Name, r.Kind}, "wait timeout")
+		}
+		time.Sleep(waitDelay)
+	}
 }
 
 func (p *Project) printCreateResult(exists bool) {

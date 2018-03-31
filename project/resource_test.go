@@ -2,6 +2,7 @@ package project
 
 import (
 	"testing"
+	"time"
 
 	"github.com/palantir/stacktrace"
 	"github.com/stretchr/testify/require"
@@ -88,6 +89,7 @@ func (s *ResourceTestSuite) TestResolveChildren() {
 				Depend: []string{"d", "e"},
 			},
 		},
+		LeafNodes: []string{"f", "g"},
 	}
 	require.Equal(s.T(), expectedRg1, rg1)
 
@@ -197,6 +199,15 @@ func (s *ResourceTestSuite) TestCyclic() {
 	require.Equal(s.T(), ErrCyclicDependency{"b"}, stacktrace.RootCause(err))
 }
 
+/*
+     _  a           b
+    /  /   \      /    \
+   |  c        f         e
+   \  /       / \       /
+    d  ------    ---- g
+     \               /
+      ------ h -----
+*/
 func (s *ResourceTestSuite) TestWalk() {
 	rg := &ResourceGraph{
 		RootNodes: []string{"a", "b"},
@@ -236,12 +247,100 @@ func (s *ResourceTestSuite) TestWalk() {
 		},
 	}
 	rg.resolveChildren()
-	trail := ""
-	rg.Walk(func(g *ResourceGroup) error {
-		trail += g.Name
+	trailForward := ""
+	rg.WalkForward(func(g *ResourceGroup) error {
+		trailForward += g.Name
 		return nil
 	})
-	require.Equal(s.T(), "abcfedgh", trail)
+	require.Equal(s.T(), "abcfedgh", trailForward)
+	trailBackward := ""
+	rg.WalkBackward(func(g *ResourceGroup) error {
+		trailBackward += g.Name
+		return nil
+	})
+	require.Equal(s.T(), "hdgcfeab", trailBackward)
+}
+
+func (s *ResourceTestSuite) TestWalkWithWait() {
+	rg := &ResourceGraph{
+		RootNodes: []string{"a"},
+		ResourceGroups: map[string]*ResourceGroup{
+			"a": &ResourceGroup{
+				Name: "a",
+				ResourceFiles: []*ResourceFile{
+					&ResourceFile{
+						Resources: []*Resource{
+							&Resource{
+								Name: "Test",
+							},
+						},
+					},
+				},
+			},
+			"b": &ResourceGroup{
+				Name:   "b",
+				Depend: []string{"a"},
+				ResourceFiles: []*ResourceFile{
+					&ResourceFile{
+						Resources: []*Resource{
+							&Resource{
+								Name: "Test",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	err := rg.resolveChildren()
+	require.Nil(s.T(), err)
+	work := &struct {
+		value int
+		done  bool
+	}{
+		value: 0,
+		done:  false,
+	}
+	rg.WalkForwardWithWait(func(g *ResourceGroup) error {
+		if g.Name == "a" {
+			go func() {
+				time.Sleep(2 * time.Second)
+				work.value = 42
+				work.done = true
+			}()
+		} else {
+			require.Equal(s.T(), 42, work.value)
+		}
+		return nil
+	}, func(r *Resource, g *ResourceGroup) error {
+		if g.Name == "a" {
+			for !work.done {
+				time.Sleep(time.Second)
+			}
+		}
+		return nil
+	})
+	work.value = 0
+	work.done = false
+	rg.WalkBackwardWithWait(func(g *ResourceGroup) error {
+		if g.Name == "b" {
+			go func() {
+				time.Sleep(2 * time.Second)
+				work.value = 42
+				work.done = true
+			}()
+		} else {
+			require.Equal(s.T(), 42, work.value)
+		}
+		return nil
+	}, func(r *Resource, g *ResourceGroup) error {
+		if g.Name == "b" {
+			for !work.done {
+				time.Sleep(time.Second)
+			}
+		}
+		return nil
+	})
 }
 
 func TestResource(t *testing.T) {

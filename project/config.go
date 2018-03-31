@@ -10,10 +10,11 @@ import (
 
 // Config holds configuration data parsed from yaml file
 type Config struct {
-	RootDir        string                 `yaml:"root_dir"`
-	Namespace      string                 `yaml:"namespace"`
-	Variables      map[string]string      `yaml:"variables"`
-	ResourceGroups []*ResourceGroupConfig `yaml:"resource_groups"`
+	RootDir         string                 `yaml:"root_dir"`
+	Namespace       string                 `yaml:"namespace"`
+	Variables       map[string]string      `yaml:"variables"`
+	ResourceGroups  []*ResourceGroupConfig `yaml:"resource_groups"`
+	DeleteNamespace bool                   `yaml:"delete_namespace"`
 }
 
 // ResourceGroupConfig holds configuration for resource group

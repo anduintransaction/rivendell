@@ -15,6 +15,7 @@ import (
 type ResourceGraph struct {
 	ResourceGroups map[string]*ResourceGroup
 	RootNodes      []string
+	LeafNodes      []string
 }
 
 // ResourceGroup holds configuration for a resource group
@@ -53,20 +54,21 @@ type resourceMetadataYAML struct {
 
 // ReadResourceGraph .
 func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConfig, variables map[string]string) (*ResourceGraph, error) {
-	resourceGraph := &ResourceGraph{
+	rg := &ResourceGraph{
 		ResourceGroups: make(map[string]*ResourceGroup),
 		RootNodes:      []string{},
+		LeafNodes:      []string{},
 	}
 	for _, resourceGroupConfig := range resourceGroupConfigs {
-		resourceGroup := &ResourceGroup{
+		g := &ResourceGroup{
 			Name:     resourceGroupConfig.Name,
 			Depend:   utils.NilArrayToEmpty(resourceGroupConfig.Depend),
 			Wait:     utils.NilArrayToEmpty(resourceGroupConfig.Wait),
 			Children: []string{},
 		}
-		resourceGraph.ResourceGroups[resourceGroup.Name] = resourceGroup
-		if len(resourceGroup.Depend) == 0 {
-			resourceGraph.RootNodes = append(resourceGraph.RootNodes, resourceGroup.Name)
+		rg.ResourceGroups[g.Name] = g
+		if len(g.Depend) == 0 {
+			rg.RootNodes = append(rg.RootNodes, g.Name)
 		}
 		includePatterns := utils.PrependPaths(rootDir, resourceGroupConfig.Resources)
 		excludePatterns := utils.PrependPaths(rootDir, resourceGroupConfig.Excludes)
@@ -81,29 +83,77 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 			}
 			rf := &ResourceFile{
 				FilePath:   resourceFile,
-				RawContent: resourceGraph.removeNamespace(string(fileContent)),
+				RawContent: rg.removeNamespace(string(fileContent)),
 			}
-			err = resourceGraph.splitResourceFile(rf)
+			err = rg.splitResourceFile(rf)
 			if err != nil {
 				return nil, err
 			}
-			resourceGroup.ResourceFiles = append(resourceGroup.ResourceFiles, rf)
+			g.ResourceFiles = append(g.ResourceFiles, rf)
 		}
 	}
-	sort.Strings(resourceGraph.RootNodes)
-	err := resourceGraph.resolveChildren()
+	sort.Strings(rg.RootNodes)
+	err := rg.resolveChildren()
 	if err != nil {
 		return nil, err
 	}
-	err = resourceGraph.cyclicCheck()
+	err = rg.cyclicCheck()
 	if err != nil {
 		return nil, err
 	}
-	return resourceGraph, nil
+	return rg, nil
 }
 
-// Walk through the graph, BFS style
-func (rg *ResourceGraph) Walk(f func(g *ResourceGroup) error) error {
+// WalkForwardWithWait from root nodes
+func (rg *ResourceGraph) WalkForwardWithWait(f func(g *ResourceGroup) error, readyFunc func(r *Resource, g *ResourceGroup) error) error {
+	readyResourceGroups := make(map[*ResourceGroup]bool)
+	readyResources := make(map[*Resource]bool)
+	return rg.WalkForward(func(g *ResourceGroup) error {
+		for _, depGroupName := range g.Depend {
+			depGroup := rg.ResourceGroups[depGroupName]
+			if !readyResourceGroups[depGroup] {
+				for _, r := range depGroup.allResources() {
+					if !readyResources[r] {
+						err := readyFunc(r, depGroup)
+						if err != nil {
+							return err
+						}
+						readyResources[r] = true
+					}
+				}
+			}
+			readyResourceGroups[depGroup] = true
+		}
+		return f(g)
+	})
+}
+
+// WalkBackwardWithWait from leaf nodes
+func (rg *ResourceGraph) WalkBackwardWithWait(f func(g *ResourceGroup) error, readyFunc func(r *Resource, g *ResourceGroup) error) error {
+	readyResourceGroups := make(map[*ResourceGroup]bool)
+	readyResources := make(map[*Resource]bool)
+	return rg.WalkBackward(func(g *ResourceGroup) error {
+		for _, depGroupName := range g.Children {
+			depGroup := rg.ResourceGroups[depGroupName]
+			if !readyResourceGroups[depGroup] {
+				for _, r := range depGroup.allResources() {
+					if !readyResources[r] {
+						err := readyFunc(r, depGroup)
+						if err != nil {
+							return err
+						}
+						readyResources[r] = true
+					}
+				}
+			}
+			readyResourceGroups[depGroup] = true
+		}
+		return f(g)
+	})
+}
+
+// WalkForward through the graph, BFS style
+func (rg *ResourceGraph) WalkForward(f func(g *ResourceGroup) error) error {
 	candidates := []string{}
 	for _, candidate := range rg.RootNodes {
 		candidates = append(candidates, candidate)
@@ -132,9 +182,39 @@ func (rg *ResourceGraph) Walk(f func(g *ResourceGroup) error) error {
 	return nil
 }
 
-// WalkResource .
-func (rg *ResourceGraph) WalkResource(f func(r *Resource, g *ResourceGroup) error) error {
-	return rg.Walk(func(g *ResourceGroup) error {
+// WalkBackward through the graph, BFS style
+func (rg *ResourceGraph) WalkBackward(f func(g *ResourceGroup) error) error {
+	candidates := []string{}
+	for _, candidate := range rg.LeafNodes {
+		candidates = append(candidates, candidate)
+	}
+	visited := utils.NewStringSet()
+	for len(candidates) > 0 {
+		current := candidates[0]
+		if !visited.Exists(current) {
+			depVisited := true
+			for _, dep := range rg.ResourceGroups[current].Children {
+				if !visited.Exists(dep) {
+					depVisited = false
+					break
+				}
+			}
+			if depVisited {
+				err := f(rg.ResourceGroups[current])
+				if err != nil {
+					return err
+				}
+				visited.Add(current)
+			}
+		}
+		candidates = append(candidates[1:], rg.ResourceGroups[current].Depend...)
+	}
+	return nil
+}
+
+// WalkResourceForward with waiting
+func (rg *ResourceGraph) WalkResourceForward(f func(r *Resource, g *ResourceGroup) error, readyFunc func(r *Resource, g *ResourceGroup) error) error {
+	return rg.WalkForwardWithWait(func(g *ResourceGroup) error {
 		for _, rf := range g.ResourceFiles {
 			for _, r := range rf.Resources {
 				err := f(r, g)
@@ -144,7 +224,22 @@ func (rg *ResourceGraph) WalkResource(f func(r *Resource, g *ResourceGroup) erro
 			}
 		}
 		return nil
-	})
+	}, readyFunc)
+}
+
+// WalkResourceBackward with waiting
+func (rg *ResourceGraph) WalkResourceBackward(f func(r *Resource, g *ResourceGroup) error, readyFunc func(r *Resource, g *ResourceGroup) error) error {
+	return rg.WalkBackwardWithWait(func(g *ResourceGroup) error {
+		for _, rf := range g.ResourceFiles {
+			for _, r := range rf.Resources {
+				err := f(r, g)
+				if err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}, readyFunc)
 }
 
 func (rg *ResourceGraph) removeNamespace(content string) string {
@@ -195,7 +290,11 @@ func (rg *ResourceGraph) resolveChildren() error {
 	}
 	for _, resourceGroup := range rg.ResourceGroups {
 		sort.Strings(resourceGroup.Children)
+		if len(resourceGroup.Children) == 0 {
+			rg.LeafNodes = append(rg.LeafNodes, resourceGroup.Name)
+		}
 	}
+	sort.Strings(rg.LeafNodes)
 	return nil
 }
 
@@ -237,4 +336,14 @@ func (rg *ResourceGraph) cyclicDFS(current string, white, gray, black utils.Stri
 	gray.Remove(current)
 	black.Add(current)
 	return nil
+}
+
+func (g *ResourceGroup) allResources() []*Resource {
+	resources := []*Resource{}
+	for _, rf := range g.ResourceFiles {
+		for _, r := range rf.Resources {
+			resources = append(resources, r)
+		}
+	}
+	return resources
 }

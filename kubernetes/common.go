@@ -12,11 +12,6 @@ const (
 	defaultPendingCheckLimit   = 40
 )
 
-func testEnable() bool {
-	kubernetesTestValue := os.Getenv("KUBERNETES_TEST_ENABLE")
-	return kubernetesTestValue == "true" || kubernetesTestValue == "1"
-}
-
 func buildTestContext(namespace string) (*Context, error) {
 	kubeContext := os.Getenv("KUBERNETES_TEST_CONTEXT")
 	if kubeContext == "" {

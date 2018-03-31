@@ -6,7 +6,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strings"
 
 	zglob "github.com/mattn/go-zglob"
 	"github.com/palantir/stacktrace"
@@ -32,7 +34,7 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "cannot read template file %q", templateFile)
 	}
-	contentWithEnvExpand := os.ExpandEnv(string(content))
+	contentWithEnvExpand := ExpandEnv(string(content))
 	tmpl, err := template.New("rivendell").Parse(contentWithEnvExpand)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "cannot parse template file %q", templateFile)
@@ -89,5 +91,15 @@ func StringArrayMap(a []string, f func(string) string) []string {
 func PrependPaths(prefix string, paths []string) []string {
 	return StringArrayMap(paths, func(path string) string {
 		return filepath.Join(prefix, path)
+	})
+}
+
+var envVarRegex = regexp.MustCompile("\\$\\([^\\)]+\\)")
+
+// ExpandEnv replaces $(var) with environment variable value
+func ExpandEnv(s string) string {
+	return envVarRegex.ReplaceAllStringFunc(s, func(found string) string {
+		envName := strings.TrimPrefix(strings.TrimSuffix(found, ")"), "$(")
+		return os.Getenv(envName)
 	})
 }

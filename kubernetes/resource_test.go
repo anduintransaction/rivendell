@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anduintransaction/rivendell/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -25,19 +26,23 @@ func (s *ResourceTestSuite) SetupSuite() {
 	kubeContext, err := NewContext(namespace, "", "")
 	require.Nil(s.T(), err)
 	s.kubeContext = kubeContext
-	exists, err := kubeContext.Namespace().Create()
-	require.Nil(s.T(), err)
-	require.False(s.T(), exists)
+	if utils.TestEnable() {
+		exists, err := kubeContext.Namespace().Create()
+		require.Nil(s.T(), err)
+		require.False(s.T(), exists)
+	}
 }
 
 func (s *ResourceTestSuite) TearDownSuite() {
-	exists, err := s.kubeContext.Namespace().Delete()
-	require.Nil(s.T(), err)
-	require.True(s.T(), exists)
+	if utils.TestEnable() {
+		exists, err := s.kubeContext.Namespace().Delete()
+		require.Nil(s.T(), err)
+		require.True(s.T(), exists)
+	}
 }
 
 func (s *ResourceTestSuite) TestStaticResource() {
-	if !testEnable() {
+	if !utils.TestEnable() {
 		fmt.Println("Skipping static resource test")
 		return
 	}
@@ -84,7 +89,7 @@ roleRef:
 }
 
 func (s *ResourceTestSuite) TestPodBasedResource() {
-	if !testEnable() {
+	if !utils.TestEnable() {
 		fmt.Println("Skipping pod-based resource test")
 		return
 	}
@@ -96,10 +101,10 @@ func (s *ResourceTestSuite) TestPodBasedResource() {
 }
 
 func (s *ResourceTestSuite) TestPodResource() {
-	// if !testEnable() {
-	// 	fmt.Println("Skipping pod-based resource test")
-	// 	return
-	// }
+	if !utils.TestEnable() {
+		fmt.Println("Skipping pod-based resource test")
+		return
+	}
 	s.testPodResource("happy", "pod", "happy.yml")
 	s.testPodResource("start-slow", "pod", "start-slow.yml")
 	s.testPodResource("stop-slow", "pod", "stop-slow.yml")

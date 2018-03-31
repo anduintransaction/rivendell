@@ -22,3 +22,13 @@ type ErrCyclicDependency struct {
 func (err ErrCyclicDependency) Error() string {
 	return fmt.Sprintf("cyclic dependency found for %q", err.Node)
 }
+
+// ErrWaitTimeout .
+type ErrWaitTimeout struct {
+	Name string
+	Kind string
+}
+
+func (err ErrWaitTimeout) Error() string {
+	return fmt.Sprintf("wait timeout for %s %q", err.Kind, err.Name)
+}

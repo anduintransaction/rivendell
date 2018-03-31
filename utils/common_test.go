@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"os"
 	"path/filepath"
 	"sort"
 	"testing"
@@ -37,6 +38,13 @@ func (s *CommonTestSuite) TestGlob() {
 		filepath.Join(s.resourceRoot, "utils-test", "glob", "file2"),
 	}
 	require.Equal(s.T(), expected, files)
+}
+
+func (s *CommonTestSuite) TestReplaceEnv() {
+	str := "$(RIVENDELL_USER) $RIVENDELL_USER ${RIVENDELL_USER} $(EMPTY)"
+	os.Setenv("RIVENDELL_USER", "rivendell")
+	expected := "rivendell $RIVENDELL_USER ${RIVENDELL_USER} "
+	require.Equal(s.T(), expected, ExpandEnv(str))
 }
 
 func TestCommon(t *testing.T) {
