@@ -52,9 +52,9 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 func (p *Project) Debug() {
 	p.printCommonInfo()
 	p.resourceGraph.WalkForward(func(g *ResourceGroup) error {
-		utils.Info("Resource group %q\n", g.Name)
+		utils.Info("Resource group %q", g.Name)
 		for _, rf := range g.ResourceFiles {
-			utils.Info2("Resource file %q\n", rf.FilePath)
+			utils.Info2("Resource file %q", rf.FilePath)
 			fmt.Println()
 			for _, r := range rf.Resources {
 				fmt.Println(r.RawContent)
@@ -91,11 +91,17 @@ func (p *Project) Down() error {
 		return err
 	}
 	p.printCommonInfo()
-	return p.resourceGraph.WalkResourceBackward(func(r *Resource, g *ResourceGroup) error {
+	err = p.resourceGraph.WalkResourceBackward(func(r *Resource, g *ResourceGroup) error {
 		return p.deleteResource(kubeContext, g, r)
 	}, func(r *Resource, g *ResourceGroup) error {
 		return p.waitForDeleted(kubeContext, r)
 	})
+	// Delete namespace anyway, this may have the side-effect of deleting all resources.
+	errNamespaceDelete := p.deleteNamespace(kubeContext)
+	if errNamespaceDelete != nil {
+		utils.Error(err)
+	}
+	return err
 }
 
 func (p *Project) resolveProjectRoot(projectFile, configRoot string) {
@@ -130,13 +136,13 @@ func (p *Project) resolveResourceGraph(resourceGroupConfigs []*ResourceGroupConf
 }
 
 func (p *Project) printCommonInfo() {
-	utils.Info("Using namespace %q\n", p.namespace)
-	utils.Info("Using context %q\n", p.context)
-	utils.Info("Using kubernetes config file %q\n", p.kubeConfig)
+	utils.Info("Using namespace %q", p.namespace)
+	utils.Info("Using context %q", p.context)
+	utils.Info("Using kubernetes config file %q", p.kubeConfig)
 }
 
 func (p *Project) createNamespace(kubeContext *kubernetes.Context) error {
-	utils.Info("Creating namespace %q\n", p.namespace)
+	utils.Info("Creating namespace %q", p.namespace)
 	exists, err := kubeContext.Namespace().Create()
 	if err != nil {
 		return err
@@ -145,8 +151,18 @@ func (p *Project) createNamespace(kubeContext *kubernetes.Context) error {
 	return nil
 }
 
+func (p *Project) deleteNamespace(kubeContext *kubernetes.Context) error {
+	utils.Warn("Deleting namespace %q", p.namespace)
+	exists, err := kubeContext.Namespace().Delete()
+	if err != nil {
+		return err
+	}
+	p.printDeleteResult(exists)
+	return nil
+}
+
 func (p *Project) createResource(kubeContext *kubernetes.Context, g *ResourceGroup, r *Resource) error {
-	utils.Info("Creating %s %q in group %q\n", r.Kind, r.Name, g.Name)
+	utils.Info("Creating %s %q in group %q", r.Kind, r.Name, g.Name)
 	exists, err := kubeContext.Resource().Create(r.Name, r.Kind, r.RawContent)
 	if err != nil {
 		return err
@@ -156,7 +172,7 @@ func (p *Project) createResource(kubeContext *kubernetes.Context, g *ResourceGro
 }
 
 func (p *Project) deleteResource(kubeContext *kubernetes.Context, g *ResourceGroup, r *Resource) error {
-	utils.Warn("Deleting %s %q in group %q\n", r.Kind, r.Name, g.Name)
+	utils.Warn("Deleting %s %q in group %q", r.Kind, r.Name, g.Name)
 	exists, err := kubeContext.Resource().Delete(r.Name, r.Kind)
 	if err != nil {
 		return err
@@ -203,16 +219,16 @@ func (p *Project) waitForDeleted(kubeContext *kubernetes.Context, r *Resource) e
 
 func (p *Project) printCreateResult(exists bool) {
 	if exists {
-		utils.Warn("====> Existed\n")
+		utils.Warn("====> Existed")
 	} else {
-		utils.Success("====> Success\n")
+		utils.Success("====> Success")
 	}
 }
 
 func (p *Project) printDeleteResult(exists bool) {
 	if exists {
-		utils.Success("====> Success\n")
+		utils.Success("====> Success")
 	} else {
-		utils.Warn("====> Not exist\n")
+		utils.Warn("====> Not exist")
 	}
 }

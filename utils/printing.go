@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/palantir/stacktrace"
@@ -9,22 +10,22 @@ import (
 
 // Info .
 func Info(msg string, args ...interface{}) {
-	color.New(color.FgBlue).Printf(msg, args...)
+	color.New(color.FgBlue).Printf(appendNewLine(msg), args...)
 }
 
 // Info2 .
 func Info2(msg string, args ...interface{}) {
-	color.New(color.FgCyan).Printf(msg, args...)
+	color.New(color.FgCyan).Printf(appendNewLine(msg), args...)
 }
 
 // Warn .
 func Warn(msg string, args ...interface{}) {
-	color.New(color.FgYellow).Printf(msg, args...)
+	color.New(color.FgYellow).Printf(appendNewLine(msg), args...)
 }
 
 // Success .
 func Success(msg string, args ...interface{}) {
-	color.New(color.FgGreen).Printf(msg, args...)
+	color.New(color.FgGreen).Printf(appendNewLine(msg), args...)
 }
 
 // Error .
@@ -41,4 +42,11 @@ func Error(err error) {
 func Fatal(err error) {
 	Error(err)
 	os.Exit(1)
+}
+
+func appendNewLine(msg string) string {
+	if strings.HasSuffix(msg, "\n") {
+		return msg
+	}
+	return msg + "\n"
 }

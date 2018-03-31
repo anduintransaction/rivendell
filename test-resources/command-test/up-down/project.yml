@@ -8,3 +8,4 @@ resource_groups:
       - services/*.yml
     depend:
       - configs
+delete_namespace: true
