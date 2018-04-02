@@ -105,13 +105,13 @@ func (s *ResourceTestSuite) TestPodResource() {
 		fmt.Println("Skipping pod-based resource test")
 		return
 	}
-	s.testPodResource("happy", "pod", "happy.yml", 0)
-	s.testPodResource("start-slow", "pod", "start-slow.yml", 0)
-	s.testPodResource("stop-slow", "pod", "stop-slow.yml", 0)
-	s.testPodResource("stop-slow", "pod", "stop-slow.yml", 0)
-	s.testPodResource("completed", "pod", "completed.yml", 15)
-	s.testPodResource("error", "pod", "error.yml", 15)
-	s.testPodResource("timeout", "pod", "timeout.yml", 20)
+	s.testPodResource("happy", "happy.yml", 0)
+	s.testPodResource("start-slow", "start-slow.yml", 0)
+	s.testPodResource("stop-slow", "stop-slow.yml", 0)
+	s.testPodResource("stop-slow", "stop-slow.yml", 0)
+	s.testPodResource("completed", "completed.yml", 15)
+	s.testPodResource("error", "error.yml", 15)
+	s.testPodResource("timeout", "timeout.yml", 20)
 }
 
 func (s *ResourceTestSuite) TestPodWait() {
@@ -126,7 +126,7 @@ func (s *ResourceTestSuite) TestPodWait() {
 	require.NotNil(s.T(), err)
 	_, ok := stacktrace.RootCause(err).(ErrNotExist)
 	require.True(s.T(), ok)
-	s.createPodResource("success", "pod", "success.yml")
+	s.createPodResource("success", "success.yml")
 	s.deleteResource("success", "pod")
 	_, err = s.kubeContext.Resource().Wait("success", "pod")
 	require.NotNil(s.T(), err)
@@ -161,20 +161,20 @@ func (s *ResourceTestSuite) testPodBasedResource(name, kind, filename string) {
 	s.redeleteResource(name, kind)
 }
 
-func (s *ResourceTestSuite) testPodResource(name, kind, filename string, wait int) {
-	s.createPodResource(name, kind, filename)
-	s.verifyExists(name, kind)
+func (s *ResourceTestSuite) testPodResource(name, filename string, wait int) {
+	s.createPodResource(name, filename)
+	s.verifyExists(name, "pod")
 	if wait > 0 {
 		time.Sleep(time.Duration(wait) * time.Second)
 	}
-	s.recreatePodResource(name, kind, filename)
-	s.deleteResource(name, kind)
-	s.verifyNotExists(name, kind)
-	s.redeleteResource(name, kind)
+	s.recreatePodResource(name, filename)
+	s.deleteResource(name, "pod")
+	s.verifyNotExists(name, "pod")
+	s.redeleteResource(name, "pod")
 }
 
 func (s *ResourceTestSuite) testPodWait(name, filename string, expectedSuccess bool) {
-	s.createPodResource(name, "pod", filename)
+	s.createPodResource(name, filename)
 	s.verifyExists(name, "pod")
 	success, err := s.kubeContext.Resource().Wait(name, "pod")
 	require.Nil(s.T(), err)
@@ -220,14 +220,14 @@ func (s *ResourceTestSuite) recreatePodBasedResource(name, kind, filename string
 	s.createResourceFromFile(name, kind, path, true)
 }
 
-func (s *ResourceTestSuite) createPodResource(name, kind, filename string) {
+func (s *ResourceTestSuite) createPodResource(name, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "pod", filename)
-	s.createResourceFromFile(name, kind, path, false)
+	s.createResourceFromFile(name, "pod", path, false)
 }
 
-func (s *ResourceTestSuite) recreatePodResource(name, kind, filename string) {
+func (s *ResourceTestSuite) recreatePodResource(name, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "pod", filename)
-	s.createResourceFromFile(name, kind, path, true)
+	s.createResourceFromFile(name, "pod", path, true)
 }
 
 func (s *ResourceTestSuite) createResourceFromFile(name, kind, path string, expectedExists bool) {
