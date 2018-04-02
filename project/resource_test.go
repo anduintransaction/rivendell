@@ -276,6 +276,12 @@ func (s *ResourceTestSuite) TestWalkWithWait() {
 						},
 					},
 				},
+				Wait: []*WaitConfig{
+					&WaitConfig{
+						Name: "test",
+						Kind: "test",
+					},
+				},
 			},
 			"b": &ResourceGroup{
 				Name:   "b",
@@ -301,9 +307,10 @@ func (s *ResourceTestSuite) TestWalkWithWait() {
 		value: 0,
 		done:  false,
 	}
-	rg.WalkForwardWithWait(func(g *ResourceGroup) error {
+	err = rg.WalkForwardWithWait(func(g *ResourceGroup) error {
 		if g.Name == "a" {
 			go func() {
+				require.Equal(s.T(), 21, work.value)
 				time.Sleep(2 * time.Second)
 				work.value = 42
 				work.done = true
@@ -319,10 +326,15 @@ func (s *ResourceTestSuite) TestWalkWithWait() {
 			}
 		}
 		return nil
+	}, func(name, kind string) error {
+		work.value = 21
+		time.Sleep(2 * time.Second)
+		return nil
 	})
+	require.Nil(s.T(), err)
 	work.value = 0
 	work.done = false
-	rg.WalkBackwardWithWait(func(g *ResourceGroup) error {
+	err = rg.WalkBackwardWithWait(func(g *ResourceGroup) error {
 		if g.Name == "b" {
 			go func() {
 				time.Sleep(2 * time.Second)
@@ -341,6 +353,7 @@ func (s *ResourceTestSuite) TestWalkWithWait() {
 		}
 		return nil
 	})
+	require.Nil(s.T(), err)
 }
 
 func TestResource(t *testing.T) {

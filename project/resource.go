@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/palantir/stacktrace"
@@ -23,7 +24,7 @@ type ResourceGroup struct {
 	Name          string
 	ResourceFiles []*ResourceFile
 	Depend        []string
-	Wait          []string
+	Wait          []*WaitConfig
 	Children      []string
 }
 
@@ -52,6 +53,10 @@ type resourceMetadataYAML struct {
 	Name string `yaml:"name"`
 }
 
+const (
+	defaultWaitTimeout = 300
+)
+
 // ReadResourceGraph .
 func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConfig, variables map[string]string) (*ResourceGraph, error) {
 	rg := &ResourceGraph{
@@ -63,8 +68,11 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 		g := &ResourceGroup{
 			Name:     resourceGroupConfig.Name,
 			Depend:   utils.NilArrayToEmpty(resourceGroupConfig.Depend),
-			Wait:     utils.NilArrayToEmpty(resourceGroupConfig.Wait),
 			Children: []string{},
+		}
+		g.Wait = resourceGroupConfig.Wait
+		if g.Wait == nil {
+			g.Wait = []*WaitConfig{}
 		}
 		rg.ResourceGroups[g.Name] = g
 		if len(g.Depend) == 0 {
@@ -105,7 +113,7 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 }
 
 // WalkForwardWithWait from root nodes
-func (rg *ResourceGraph) WalkForwardWithWait(f func(g *ResourceGroup) error, readyFunc func(r *Resource, g *ResourceGroup) error) error {
+func (rg *ResourceGraph) WalkForwardWithWait(f func(g *ResourceGroup) error, readyFunc func(r *Resource, g *ResourceGroup) error, waitFunc func(name, kind string) error) error {
 	readyResourceGroups := make(map[*ResourceGroup]bool)
 	readyResources := make(map[*Resource]bool)
 	return rg.WalkForward(func(g *ResourceGroup) error {
@@ -123,6 +131,12 @@ func (rg *ResourceGraph) WalkForwardWithWait(f func(g *ResourceGroup) error, rea
 				}
 			}
 			readyResourceGroups[depGroup] = true
+		}
+		for _, wait := range g.Wait {
+			err := rg.waitFor(wait, waitFunc)
+			if err != nil {
+				return err
+			}
 		}
 		return f(g)
 	})
@@ -213,7 +227,7 @@ func (rg *ResourceGraph) WalkBackward(f func(g *ResourceGroup) error) error {
 }
 
 // WalkResourceForward with waiting
-func (rg *ResourceGraph) WalkResourceForward(f func(r *Resource, g *ResourceGroup) error, readyFunc func(r *Resource, g *ResourceGroup) error) error {
+func (rg *ResourceGraph) WalkResourceForward(f func(r *Resource, g *ResourceGroup) error, readyFunc func(r *Resource, g *ResourceGroup) error, waitFunc func(name, kind string) error) error {
 	return rg.WalkForwardWithWait(func(g *ResourceGroup) error {
 		for _, rf := range g.ResourceFiles {
 			for _, r := range rf.Resources {
@@ -224,7 +238,7 @@ func (rg *ResourceGraph) WalkResourceForward(f func(r *Resource, g *ResourceGrou
 			}
 		}
 		return nil
-	}, readyFunc)
+	}, readyFunc, waitFunc)
 }
 
 // WalkResourceBackward with waiting
@@ -336,6 +350,25 @@ func (rg *ResourceGraph) cyclicDFS(current string, white, gray, black utils.Stri
 	gray.Remove(current)
 	black.Add(current)
 	return nil
+}
+
+func (rg *ResourceGraph) waitFor(wait *WaitConfig, waitFunc func(name, kind string) error) error {
+	waitChan := make(chan error, 1)
+	go func() {
+		err := waitFunc(wait.Name, wait.Kind)
+		waitChan <- err
+	}()
+	timeout := wait.Timeout
+	if timeout <= 0 {
+		timeout = defaultWaitTimeout
+	}
+	timer := time.NewTimer(time.Duration(timeout) * time.Second)
+	select {
+	case err := <-waitChan:
+		return err
+	case <-timer.C:
+		return stacktrace.Propagate(ErrWaitTimeout{wait.Name, wait.Kind}, "wait timeout")
+	}
 }
 
 func (g *ResourceGroup) allResources() []*Resource {

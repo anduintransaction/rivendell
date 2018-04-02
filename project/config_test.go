@@ -58,7 +58,16 @@ func (s *ConfigTestSuite) TestReadProjectConfig() {
 				Name:      "services",
 				Resources: []string{"./services/*.yml"},
 				Depend:    []string{"init-jobs"},
-				Wait:      []string{"init-postgres", "init-redis"},
+				Wait: []*WaitConfig{
+					&WaitConfig{
+						Name: "init-postgres",
+						Kind: "job",
+					},
+					&WaitConfig{
+						Name: "init-redis",
+						Kind: "job",
+					},
+				},
 			},
 		},
 	}

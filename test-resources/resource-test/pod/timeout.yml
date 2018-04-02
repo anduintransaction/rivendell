@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: timeout
+spec:
+  restartPolicy: Never
+  activeDeadlineSeconds: 5
+  containers:
+    - name: completed
+      image: busybox
+      args:
+        - sh
+        - -c
+        - sleep 1000

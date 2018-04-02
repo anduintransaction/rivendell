@@ -81,6 +81,8 @@ func (p *Project) Up() error {
 		return p.createResource(kubeContext, g, r)
 	}, func(r *Resource, g *ResourceGroup) error {
 		return p.waitForExists(kubeContext, r)
+	}, func(name, kind string) error {
+		return p.waitForResource(kubeContext, name, kind)
 	})
 }
 
@@ -215,6 +217,10 @@ func (p *Project) waitForDeleted(kubeContext *kubernetes.Context, r *Resource) e
 		}
 		time.Sleep(waitDelay)
 	}
+}
+
+func (p *Project) waitForResource(kubeContext *kubernetes.Context, name, kind string) error {
+	return nil
 }
 
 func (p *Project) printCreateResult(exists bool) {

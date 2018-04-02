@@ -25,7 +25,7 @@ func (r *Resource) Create(name, kind, rawContent string) (exists bool, err error
 	if status == rsStatusUnknown {
 		return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
 	}
-	if status == rsStatusActive || status == rsStatusPending {
+	if status == rsStatusActive || status == rsStatusPending || status == rsStatusSucceeded || status == rsStatusFailed {
 		exists = true
 		return
 	}
@@ -94,6 +94,19 @@ func (r *Resource) Delete(name, kind string) (exists bool, err error) {
 	return
 }
 
+// Wait .
+func (r *Resource) Wait(name, kind string) (success bool, err error) {
+	kind = strings.ToLower(kind)
+	switch kind {
+	case "pod":
+		return r.waitForPod(name)
+	case "job":
+		return r.waitForJob(name)
+	default:
+		return false, stacktrace.Propagate(ErrUnsupportedKind{kind}, "unsupported kind")
+	}
+}
+
 func (r *Resource) getStatus(name, kind string) (rsStatus, error) {
 	if kind != "pod" {
 		return r.context.getNonPodStatus(name, kind)
@@ -131,6 +144,10 @@ func (r *Resource) getStatus(name, kind string) (rsStatus, error) {
 			return rsStatusActive, nil
 		}
 		return rsStatusTerminating, nil
+	case "Succeeded":
+		return rsStatusSucceeded, nil
+	case "Failed":
+		return rsStatusFailed, nil
 	default:
 		return rsStatusUnknown, nil
 	}
@@ -178,6 +195,32 @@ func (r *Resource) waitForTerminating(name, kind string) error {
 			return nil
 		}
 	}
+}
+
+func (r *Resource) waitForPod(name string) (success bool, err error) {
+	waitDelay := 5 * time.Second
+	for {
+		status, err := r.getStatus(name, "pod")
+		if err != nil {
+			return false, err
+		}
+		switch status {
+		case rsStatusNotExist:
+			return false, stacktrace.Propagate(ErrNotExist{name, "pod"}, "not exist")
+		case rsStatusActive, rsStatusPending, rsStatusTerminating:
+			time.Sleep(waitDelay)
+		case rsStatusSucceeded:
+			return true, nil
+		case rsStatusFailed:
+			return false, nil
+		default:
+			return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+		}
+	}
+}
+
+func (r *Resource) waitForJob(name string) (success bool, err error) {
+	return false, nil
 }
 
 type podResourceInfo struct {

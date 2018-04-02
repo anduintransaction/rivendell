@@ -19,11 +19,18 @@ type Config struct {
 
 // ResourceGroupConfig holds configuration for resource group
 type ResourceGroupConfig struct {
-	Name      string   `yaml:"name"`
-	Resources []string `yaml:"resources"`
-	Excludes  []string `yaml:"excludes"`
-	Depend    []string `yaml:"depend"`
-	Wait      []string `yaml:"wait"`
+	Name      string        `yaml:"name"`
+	Resources []string      `yaml:"resources"`
+	Excludes  []string      `yaml:"excludes"`
+	Depend    []string      `yaml:"depend"`
+	Wait      []*WaitConfig `yaml:"wait"`
+}
+
+// WaitConfig .
+type WaitConfig struct {
+	Name    string `yaml:"name"`
+	Kind    string `yaml:"kind"`
+	Timeout int    `yaml:"timeout"`
 }
 
 // ReadProjectConfig .

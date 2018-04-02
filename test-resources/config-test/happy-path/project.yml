@@ -31,5 +31,7 @@ resource_groups:
     depend:
       - init-jobs
     wait:
-      - init-postgres
-      - init-redis
+      - name: init-postgres
+        kind: job
+      - name: init-redis
+        kind: job

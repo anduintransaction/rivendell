@@ -142,4 +142,6 @@ const (
 	rsStatusPending
 	rsStatusActive
 	rsStatusTerminating
+	rsStatusSucceeded
+	rsStatusFailed
 )

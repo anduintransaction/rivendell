@@ -54,7 +54,7 @@ func (s *ProjectTestSuite) TestReadProject() {
 			"configs": &ResourceGroup{
 				Name:   "configs",
 				Depend: []string{},
-				Wait:   []string{},
+				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "configs", "postgres-configs.yml"),
@@ -72,7 +72,7 @@ func (s *ProjectTestSuite) TestReadProject() {
 			"secrets": &ResourceGroup{
 				Name:   "secrets",
 				Depend: []string{},
-				Wait:   []string{},
+				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "secrets", "postgres-secrets.yml"),
@@ -90,7 +90,7 @@ func (s *ProjectTestSuite) TestReadProject() {
 			"databases": &ResourceGroup{
 				Name:   "databases",
 				Depend: []string{"configs", "secrets"},
-				Wait:   []string{},
+				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "databases", "postgres.yml"),
@@ -128,7 +128,7 @@ func (s *ProjectTestSuite) TestReadProject() {
 			"init-jobs": &ResourceGroup{
 				Name:   "init-jobs",
 				Depend: []string{"databases"},
-				Wait:   []string{},
+				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "jobs", "init-postgres.yml"),
@@ -156,7 +156,16 @@ func (s *ProjectTestSuite) TestReadProject() {
 			"services": &ResourceGroup{
 				Name:   "services",
 				Depend: []string{"init-jobs"},
-				Wait:   []string{"init-postgres", "init-redis"},
+				Wait: []*WaitConfig{
+					&WaitConfig{
+						Name: "init-postgres",
+						Kind: "job",
+					},
+					&WaitConfig{
+						Name: "init-redis",
+						Kind: "job",
+					},
+				},
 				ResourceFiles: []*ResourceFile{
 					&ResourceFile{
 						FilePath: filepath.Join(projectDir, "services", "app.yml"),

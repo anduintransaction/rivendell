@@ -57,3 +57,22 @@ type ErrTimeout struct {
 func (err ErrTimeout) Error() string {
 	return fmt.Sprintf("timeout reached")
 }
+
+// ErrUnsupportedKind .
+type ErrUnsupportedKind struct {
+	Kind string
+}
+
+func (err ErrUnsupportedKind) Error() string {
+	return fmt.Sprintf("unsupported kind: %s", err.Kind)
+}
+
+// ErrNotExist .
+type ErrNotExist struct {
+	Name string
+	Kind string
+}
+
+func (err ErrNotExist) Error() string {
+	return fmt.Sprintf("not exist: %s %q", err.Kind, err.Name)
+}

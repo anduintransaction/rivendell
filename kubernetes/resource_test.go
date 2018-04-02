@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anduintransaction/rivendell/utils"
+	"github.com/palantir/stacktrace"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -96,7 +97,6 @@ func (s *ResourceTestSuite) TestPodBasedResource() {
 	s.testPodBasedResource("cronjob", "cronjob", "cronjob.yml")
 	s.testPodBasedResource("daemonset", "daemonset", "daemonset.yml")
 	s.testPodBasedResource("deployment", "deployment", "deployment.yml")
-	s.testPodBasedResource("job", "job", "job.yml")
 	s.testPodBasedResource("statefulset", "statefulset", "statefulset.yml")
 }
 
@@ -105,12 +105,33 @@ func (s *ResourceTestSuite) TestPodResource() {
 		fmt.Println("Skipping pod-based resource test")
 		return
 	}
-	s.testPodResource("happy", "pod", "happy.yml")
-	s.testPodResource("start-slow", "pod", "start-slow.yml")
-	s.testPodResource("stop-slow", "pod", "stop-slow.yml")
-	s.testPodResource("stop-slow", "pod", "stop-slow.yml")
-	s.testPodResource("completed", "pod", "completed.yml")
-	s.testPodResource("error", "pod", "error.yml")
+	s.testPodResource("happy", "pod", "happy.yml", 0)
+	s.testPodResource("start-slow", "pod", "start-slow.yml", 0)
+	s.testPodResource("stop-slow", "pod", "stop-slow.yml", 0)
+	s.testPodResource("stop-slow", "pod", "stop-slow.yml", 0)
+	s.testPodResource("completed", "pod", "completed.yml", 15)
+	s.testPodResource("error", "pod", "error.yml", 15)
+	s.testPodResource("timeout", "pod", "timeout.yml", 20)
+}
+
+func (s *ResourceTestSuite) TestPodWait() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping pod-based resource test")
+		return
+	}
+	s.testPodWait("success", "success.yml", true)
+	s.testPodWait("error", "error.yml", false)
+	s.testPodWait("timeout", "timeout.yml", false)
+	_, err := s.kubeContext.Resource().Wait("not-exists", "pod")
+	require.NotNil(s.T(), err)
+	_, ok := stacktrace.RootCause(err).(ErrNotExist)
+	require.True(s.T(), ok)
+	s.createPodResource("success", "pod", "success.yml")
+	s.deleteResource("success", "pod")
+	_, err = s.kubeContext.Resource().Wait("success", "pod")
+	require.NotNil(s.T(), err)
+	_, ok = stacktrace.RootCause(err).(ErrNotExist)
+	require.True(s.T(), ok)
 }
 
 func (s *ResourceTestSuite) testClusterResource(name, kind, content string) {
@@ -140,13 +161,25 @@ func (s *ResourceTestSuite) testPodBasedResource(name, kind, filename string) {
 	s.redeleteResource(name, kind)
 }
 
-func (s *ResourceTestSuite) testPodResource(name, kind, filename string) {
+func (s *ResourceTestSuite) testPodResource(name, kind, filename string, wait int) {
 	s.createPodResource(name, kind, filename)
 	s.verifyExists(name, kind)
+	if wait > 0 {
+		time.Sleep(time.Duration(wait) * time.Second)
+	}
 	s.recreatePodResource(name, kind, filename)
 	s.deleteResource(name, kind)
 	s.verifyNotExists(name, kind)
 	s.redeleteResource(name, kind)
+}
+
+func (s *ResourceTestSuite) testPodWait(name, filename string, expectedSuccess bool) {
+	s.createPodResource(name, "pod", filename)
+	s.verifyExists(name, "pod")
+	success, err := s.kubeContext.Resource().Wait(name, "pod")
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), expectedSuccess, success)
+	s.deleteResource(name, "pod")
 }
 
 func (s *ResourceTestSuite) createClusterResource(name, kind, content string) {

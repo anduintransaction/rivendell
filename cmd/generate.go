@@ -49,14 +49,20 @@ var generateCmd = &cobra.Command{
 					Resources: []string{"path/to/group1/*.yml"},
 					Excludes:  []string{"path/to/group1/exclude*"},
 					Depend:    []string{},
-					Wait:      []string{},
+					Wait:      []*project.WaitConfig{},
 				},
 				&project.ResourceGroupConfig{
 					Name:      "group2",
 					Resources: []string{"path/to/group2/*.yml"},
 					Excludes:  []string{"**/exclude*"},
 					Depend:    []string{"group1"},
-					Wait:      []string{"job1"},
+					Wait: []*project.WaitConfig{
+						&project.WaitConfig{
+							Name:    "job1",
+							Kind:    "job",
+							Timeout: 300,
+						},
+					},
 				},
 			},
 		}
