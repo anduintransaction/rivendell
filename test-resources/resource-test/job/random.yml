@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: random
+spec:
+  template:
+    metadata:
+      name: job
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: job
+          image: busybox
+          args:
+            - sh
+            - -c
+            - if [ $((RANDOM % 2)) -eq 0 ]; then true; else false; fi

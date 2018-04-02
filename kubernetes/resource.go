@@ -97,34 +97,62 @@ func (r *Resource) Delete(name, kind string) (exists bool, err error) {
 // Wait .
 func (r *Resource) Wait(name, kind string) (success bool, err error) {
 	kind = strings.ToLower(kind)
-	switch kind {
-	case "pod":
-		return r.waitForPod(name)
-	case "job":
-		return r.waitForJob(name)
-	default:
+	if kind != "pod" && kind != "job" {
 		return false, stacktrace.Propagate(ErrUnsupportedKind{kind}, "unsupported kind")
+	}
+	waitDelay := 5 * time.Second
+	for {
+		status, err := r.getStatus(name, kind)
+		if err != nil {
+			return false, err
+		}
+		switch status {
+		case rsStatusNotExist:
+			return false, stacktrace.Propagate(ErrNotExist{name, kind}, "not exist")
+		case rsStatusActive, rsStatusPending, rsStatusTerminating:
+			time.Sleep(waitDelay)
+		case rsStatusSucceeded:
+			return true, nil
+		case rsStatusFailed:
+			return false, nil
+		default:
+			return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+		}
 	}
 }
 
 func (r *Resource) getStatus(name, kind string) (rsStatus, error) {
-	if kind != "pod" {
+	switch kind {
+	case "pod":
+		return r.getPodStatus(name)
+	case "job":
+		return r.getJobStatus(name)
+	default:
 		return r.context.getNonPodStatus(name, kind)
 	}
+}
+
+func (r *Resource) getPodStatus(name string) (rsStatus, error) {
 	args := r.context.completeArgs([]string{"get", "pod", name, "-o", "yaml"})
 	cmdResult, err := utils.NewCommand("kubectl", args...).Run()
 	if err != nil {
-		return rsStatusUnknown, nil
+		return rsStatusUnknown, err
 	}
 	if cmdResult.ExitCode != 0 {
-		output, _ := ioutil.ReadAll(cmdResult.Stderr)
+		output, err := ioutil.ReadAll(cmdResult.Stderr)
+		if err != nil {
+			return rsStatusUnknown, stacktrace.Propagate(err, "cannot read stderr")
+		}
 		errOutput := string(output)
 		if strings.Contains(errOutput, "(NotFound)") {
 			return rsStatusNotExist, nil
 		}
 		return rsStatusUnknown, stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, errOutput}, "error execute command")
 	}
-	output, _ := ioutil.ReadAll(cmdResult.Stdout)
+	output, err := ioutil.ReadAll(cmdResult.Stdout)
+	if err != nil {
+		return rsStatusUnknown, stacktrace.Propagate(err, "cannot read stdout")
+	}
 	podInfo := &podResourceInfo{}
 	err = yaml.Unmarshal(output, podInfo)
 	if err != nil {
@@ -151,6 +179,45 @@ func (r *Resource) getStatus(name, kind string) (rsStatus, error) {
 	default:
 		return rsStatusUnknown, nil
 	}
+}
+
+func (r *Resource) getJobStatus(name string) (rsStatus, error) {
+	args := r.context.completeArgs([]string{"get", "job", name, "-o", "yaml"})
+	cmdResult, err := utils.NewCommand("kubectl", args...).Run()
+	if err != nil {
+		return rsStatusUnknown, err
+	}
+	if cmdResult.ExitCode != 0 {
+		output, _ := ioutil.ReadAll(cmdResult.Stderr)
+		errOutput := string(output)
+		if strings.Contains(errOutput, "(NotFound)") {
+			return rsStatusNotExist, nil
+		}
+		return rsStatusUnknown, stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, errOutput}, "error execute command")
+	}
+	output, err := ioutil.ReadAll(cmdResult.Stdout)
+	if err != nil {
+		return rsStatusUnknown, stacktrace.Propagate(err, "cannot read stdout")
+	}
+	jobInfo := &jobResourceInfo{}
+	err = yaml.Unmarshal(output, jobInfo)
+	if err != nil {
+		return rsStatusUnknown, stacktrace.Propagate(ErrInvalidResponse{err, string(output)}, "invalid response")
+	}
+	if jobInfo.Status == nil {
+		return rsStatusUnknown, nil
+	}
+	if len(jobInfo.Status.Conditions) == 0 {
+		return rsStatusActive, nil
+	}
+	condition := jobInfo.Status.Conditions[0]
+	switch condition.Type {
+	case "Complete":
+		return rsStatusSucceeded, nil
+	case "Failed":
+		return rsStatusFailed, nil
+	}
+	return rsStatusUnknown, nil
 }
 
 func (r *Resource) waitForPending(name, kind string) error {
@@ -234,4 +301,16 @@ type podMetadata struct {
 
 type podStatus struct {
 	Phase string `yaml:"phase"`
+}
+
+type jobResourceInfo struct {
+	Status *jobStatus `yaml:"status"`
+}
+
+type jobStatus struct {
+	Conditions []*jobCondition `yaml:"conditions"`
+}
+
+type jobCondition struct {
+	Type string `yaml:"type"`
 }

@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: success
+spec:
+  template:
+    metadata:
+      name: job
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: job
+          image: busybox
+          args:
+            - sh
+            - -c
+            - sleep 5; true
