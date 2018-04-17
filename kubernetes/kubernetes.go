@@ -119,7 +119,7 @@ func (c *Context) waitForNonPodTerminate(name, kind string) error {
 				return stacktrace.Propagate(ErrTimeout{}, "timeout waiting for terminating %s %q", kind, name)
 			}
 		case rsStatusUnknown:
-			return stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+			return stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 		default:
 			return nil
 		}

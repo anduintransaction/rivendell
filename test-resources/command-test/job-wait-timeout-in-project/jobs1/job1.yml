@@ -1,17 +1,17 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: success
+  name: job1
 spec:
   template:
     metadata:
-      name: job
+      name: job1
     spec:
       restartPolicy: Never
       containers:
-        - name: job
+        - name: job1
           image: ubuntu:16.04
           args:
             - sh
             - -c
-            - sleep 5; true
+            - sleep 10000; true

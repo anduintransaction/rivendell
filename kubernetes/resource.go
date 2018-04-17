@@ -23,7 +23,7 @@ func (r *Resource) Create(name, kind, rawContent string) (exists bool, err error
 		return false, err
 	}
 	if status == rsStatusUnknown {
-		return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+		return false, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 	}
 	if status == rsStatusActive || status == rsStatusPending || status == rsStatusSucceeded || status == rsStatusFailed {
 		exists = true
@@ -53,17 +53,18 @@ func (r *Resource) Create(name, kind, rawContent string) (exists bool, err error
 
 // Exists check
 func (r *Resource) Exists(name, kind string) (exists bool, err error) {
+	kind = strings.ToLower(kind)
 	status, err := r.getStatus(name, kind)
 	if err != nil {
 		return false, err
 	}
 	switch status {
-	case rsStatusActive, rsStatusPending:
+	case rsStatusActive, rsStatusPending, rsStatusSucceeded, rsStatusFailed:
 		return true, nil
 	case rsStatusNotExist, rsStatusTerminating:
 		return false, nil
 	default:
-		return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+		return false, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 	}
 }
 
@@ -75,7 +76,7 @@ func (r *Resource) Delete(name, kind string) (exists bool, err error) {
 		return false, err
 	}
 	if status == rsStatusUnknown {
-		return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+		return false, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 	}
 	if status == rsStatusNotExist || status == rsStatusTerminating {
 		exists = false
@@ -116,7 +117,7 @@ func (r *Resource) Wait(name, kind string) (success bool, err error) {
 		case rsStatusFailed:
 			return false, nil
 		default:
-			return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+			return false, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 		}
 	}
 }
@@ -235,7 +236,7 @@ func (r *Resource) waitForPending(name, kind string) error {
 				return ErrTimeout{}
 			}
 		case rsStatusUnknown:
-			return stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+			return stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 		default:
 			return nil
 		}
@@ -257,7 +258,7 @@ func (r *Resource) waitForTerminating(name, kind string) error {
 				return stacktrace.Propagate(ErrTimeout{}, "timeout waiting for terminating %s %q", kind, name)
 			}
 		case rsStatusUnknown:
-			return stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+			return stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 		default:
 			return nil
 		}
@@ -281,7 +282,7 @@ func (r *Resource) waitForPod(name string) (success bool, err error) {
 		case rsStatusFailed:
 			return false, nil
 		default:
-			return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+			return false, stacktrace.Propagate(ErrUnknownStatus{name, "pod", status}, "unknown status")
 		}
 	}
 }

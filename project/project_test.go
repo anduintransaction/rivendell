@@ -17,7 +17,7 @@ type ProjectTestSuite struct {
 	resourceRoot string
 }
 
-func (s *ProjectTestSuite) SetupTest() {
+func (s *ProjectTestSuite) SetupSuite() {
 	s.resourceRoot = "../test-resources"
 }
 

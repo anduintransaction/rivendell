@@ -1,0 +1,15 @@
+root_dir: .
+resource_groups:
+  - name: pods1
+    resources:
+      - pods1/*.yml
+  - name: services
+    resources:
+      - services/*.yml
+    depend:
+      - pods1
+    wait:
+      - name: pod1
+        kind: pod
+        timeout: 10
+delete_namespace: true

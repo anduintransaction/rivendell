@@ -32,3 +32,13 @@ type ErrWaitTimeout struct {
 func (err ErrWaitTimeout) Error() string {
 	return fmt.Sprintf("wait timeout for %s %q", err.Kind, err.Name)
 }
+
+// ErrWaitFailed .
+type ErrWaitFailed struct {
+	Name string
+	Kind string
+}
+
+func (err ErrWaitFailed) Error() string {
+	return fmt.Sprintf("wait failed for %s %q", err.Kind, err.Name)
+}

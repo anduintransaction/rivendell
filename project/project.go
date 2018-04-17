@@ -220,7 +220,14 @@ func (p *Project) waitForDeleted(kubeContext *kubernetes.Context, r *Resource) e
 }
 
 func (p *Project) waitForResource(kubeContext *kubernetes.Context, name, kind string) error {
-	return nil
+	success, err := kubeContext.Resource().Wait(name, kind)
+	if err != nil {
+		return err
+	}
+	if success {
+		return nil
+	}
+	return stacktrace.Propagate(ErrWaitFailed{name, kind}, "wait failed")
 }
 
 func (p *Project) printCreateResult(exists bool) {

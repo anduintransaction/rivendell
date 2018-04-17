@@ -44,10 +44,13 @@ func (err ErrInvalidResponse) Error() string {
 
 // ErrUnknownStatus .
 type ErrUnknownStatus struct {
+	Name   string
+	Kind   string
+	status rsStatus
 }
 
 func (err ErrUnknownStatus) Error() string {
-	return fmt.Sprintf("unknown status")
+	return fmt.Sprintf("unknown status for %s %q (%d)", err.Kind, err.Name, err.status)
 }
 
 // ErrTimeout .

@@ -17,7 +17,7 @@ func (n *Namespace) Create() (exists bool, err error) {
 		return false, err
 	}
 	if status == rsStatusUnknown {
-		return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+		return false, stacktrace.Propagate(ErrUnknownStatus{n.context.namespace, "namespace", status}, "unknown status")
 	}
 	if status == rsStatusActive || status == rsStatusPending {
 		exists = true
@@ -51,7 +51,7 @@ func (n *Namespace) Exists() (bool, error) {
 	case rsStatusActive:
 		return true, nil
 	case rsStatusUnknown:
-		return false, stacktrace.Propagate(ErrUnknownStatus{}, "unknown status")
+		return false, stacktrace.Propagate(ErrUnknownStatus{n.context.namespace, "namespace", status}, "unknown status")
 	default:
 		return false, nil
 	}

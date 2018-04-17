@@ -6,6 +6,6 @@ spec:
   restartPolicy: Never
   containers:
     - name: completed
-      image: busybox
+      image: ubuntu:16.04
       args:
         - "true"

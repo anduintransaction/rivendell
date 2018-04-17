@@ -7,7 +7,7 @@ import (
 
 const (
 	defaultTerminateInterval   = 3 * time.Second
-	defaultTerminateCheckLimit = 10
+	defaultTerminateCheckLimit = 40
 	defaultPendingInterval     = 3 * time.Second
 	defaultPendingCheckLimit   = 40
 )

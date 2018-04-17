@@ -1,0 +1,14 @@
+root_dir: .
+resource_groups:
+  - name: jobs1
+    resources:
+      - jobs1/*.yml
+  - name: services
+    resources:
+      - services/*.yml
+    depend:
+      - jobs1
+    wait:
+      - name: job1
+        kind: job
+delete_namespace: true
