@@ -31,7 +31,7 @@ func (s *ProjectTestSuite) TestReadProject() {
 		"postgresImageTag": "9.6",
 		"appTag":           "1.1.4",
 	}
-	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
+	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err, "should read project file successfully")
 	require.Equal(s.T(), projectDir, project.rootDir)
 	require.Equal(s.T(), namespace, project.namespace)
@@ -225,6 +225,28 @@ data:
   pgdata: /data/postgres
 `
 	require.Equal(s.T(), expectedConfigContent, project.resourceGraph.ResourceGroups["configs"].ResourceFiles[0].RawContent)
+}
+
+func (s *ProjectTestSuite) TestGlob() {
+	projectDir := filepath.Join(s.resourceRoot, "config-test", "glob")
+	projectFile := filepath.Join(projectDir, "project.yml")
+	includes := []string{"**/*.yml"}
+	excludes := []string{"**/mango.yml"}
+	project, err := ReadProject(projectFile, "dota", "", "", nil, includes, excludes)
+	require.Nil(s.T(), err)
+	actualFiles := []string{}
+	project.resourceGraph.WalkForward(func(g *ResourceGroup) error {
+		for _, f := range g.ResourceFiles {
+			actualFiles = append(actualFiles, strings.TrimPrefix(f.FilePath, projectDir))
+		}
+		return nil
+	})
+	expected := []string{
+		"/items/consumables/bottle.yml",
+		"/items/consumables/tango.yml",
+		"/items/defence/shiva.yml",
+	}
+	require.Equal(s.T(), expected, actualFiles)
 }
 
 func (s *ProjectTestSuite) stripResourceContent(resourceGraph *ResourceGraph) *ResourceGraph {

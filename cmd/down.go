@@ -15,26 +15,43 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/anduintransaction/rivendell/project"
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/spf13/cobra"
 )
 
-// debugCmd represents the debug command
-var debugCmd = &cobra.Command{
-	Use:   "debug [project file]",
-	Short: "Print all resources description",
-	Long:  "Print all resources description",
+// downCmd represents the down command
+var downCmd = &cobra.Command{
+	Use:   "down [project file]",
+	Short: "Destroy all resources defined in a rivendell project file",
+	Long:  "Destroy all resources defined in a rivendell project file",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		p, err := project.ReadProject(args[0], namespace, context, kubeConfig, variableMap, includeResources, excludeResources)
 		if err != nil {
 			utils.Fatal(err)
 		}
-		p.Debug()
+		p.PrintCommonInfo()
+		p.PrintDownPlan()
+		if !yes {
+			utils.Ask("Destroy all resource?", "yes", "no")
+			ok, err := utils.ExpectAnswer("yes")
+			if err != nil {
+				utils.Fatal(err)
+			}
+			if !ok {
+				os.Exit(0)
+			}
+		}
+		err = p.Down()
+		if err != nil {
+			utils.Fatal(err)
+		}
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(debugCmd)
+	RootCmd.AddCommand(downCmd)
 }

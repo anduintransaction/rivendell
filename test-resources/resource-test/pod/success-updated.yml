@@ -6,7 +6,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: success
-      image: ubuntu:16.04
+      image: ubuntu:16.10
       args:
         - sh
         - -c

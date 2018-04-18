@@ -1,0 +1,13 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: daemonset
+spec:
+  template:
+    metadata:
+      labels:
+        name: daemonset
+    spec:
+      containers:
+        - name: daemonset
+          image: nginx:1.13.12

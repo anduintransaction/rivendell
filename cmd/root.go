@@ -33,6 +33,9 @@ var context string
 var kubeConfig string
 var variableArray = []string{}
 var variableMap = map[string]string{}
+var includeResources []string
+var excludeResources []string
+var yes = false
 
 // RootCmd represents the base command when called without any subcommands
 var RootCmd = &cobra.Command{
@@ -64,5 +67,8 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "", "set kubernetes namespace")
 	RootCmd.PersistentFlags().StringVarP(&context, "context", "c", "", "set kubernetes context")
 	RootCmd.PersistentFlags().StringVar(&kubeConfig, "kubeconfig", "", "set kubectl config file")
-	RootCmd.PersistentFlags().StringArrayVarP(&variableArray, "variable", "x", []string{}, "variables to pass to rivendell task file")
+	RootCmd.PersistentFlags().StringArrayVar(&variableArray, "variable", []string{}, "variables to pass to rivendell task file, for example: --variable key1=value1 --variable key2=value2")
+	RootCmd.PersistentFlags().BoolVarP(&yes, "yes", "y", false, "Run command immediately")
+	RootCmd.PersistentFlags().StringArrayVar(&includeResources, "include", []string{}, "include file patterns, for example --include=**/service.yml --include=**/deployment.yml")
+	RootCmd.PersistentFlags().StringArrayVar(&includeResources, "exclude", []string{}, "exclude file patterns, for example --exclude=**/config.yml --exclude=**/secret.yml")
 }

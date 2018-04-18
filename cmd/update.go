@@ -15,26 +15,43 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/anduintransaction/rivendell/project"
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/spf13/cobra"
 )
 
-// debugCmd represents the debug command
-var debugCmd = &cobra.Command{
-	Use:   "debug [project file]",
-	Short: "Print all resources description",
-	Long:  "Print all resources description",
+// updateCmd represents the update command
+var updateCmd = &cobra.Command{
+	Use:   "update [project file]",
+	Short: "Update resources declared in project file, except for pod and job",
+	Long:  "Update resources declared in project file, except for pod and job",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		p, err := project.ReadProject(args[0], namespace, context, kubeConfig, variableMap, includeResources, excludeResources)
 		if err != nil {
 			utils.Fatal(err)
 		}
-		p.Debug()
+		p.PrintCommonInfo()
+		p.PrintUpdatePlan()
+		if !yes {
+			utils.Ask("Update all resource?", "yes", "no")
+			ok, err := utils.ExpectAnswer("yes")
+			if err != nil {
+				utils.Fatal(err)
+			}
+			if !ok {
+				os.Exit(0)
+			}
+		}
+		err = p.Update()
+		if err != nil {
+			utils.Fatal(err)
+		}
 	},
 }
 
 func init() {
-	RootCmd.AddCommand(debugCmd)
+	RootCmd.AddCommand(updateCmd)
 }

@@ -1,0 +1,6 @@
+root_dir: .
+resource_groups:
+  - name: group1
+    resources:
+      - services/*.yml
+delete_namespace: true

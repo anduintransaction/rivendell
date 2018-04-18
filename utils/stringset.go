@@ -46,3 +46,14 @@ func (s StringSet) First() string {
 	}
 	return ""
 }
+
+// Join .
+func (s StringSet) Join(another StringSet) StringSet {
+	newStringSet := NewStringSet()
+	for value := range s {
+		if another.Exists(value) {
+			newStringSet.Add(value)
+		}
+	}
+	return newStringSet
+}

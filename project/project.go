@@ -26,7 +26,7 @@ type Project struct {
 }
 
 // ReadProject reads a project from file
-func ReadProject(projectFile, namespace, context, kubeConfig string, variables map[string]string) (*Project, error) {
+func ReadProject(projectFile, namespace, context, kubeConfig string, variables map[string]string, includeResources []string, excludeResources []string) (*Project, error) {
 	projectConfig, err := ReadProjectConfig(projectFile, variables)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 	if err != nil {
 		return nil, err
 	}
-	err = project.resolveResourceGraph(projectConfig.ResourceGroups)
+	err = project.resolveResourceGraph(projectConfig.ResourceGroups, includeResources, excludeResources)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 
 // Debug .
 func (p *Project) Debug() {
-	p.printCommonInfo()
+	p.PrintCommonInfo()
 	p.resourceGraph.WalkForward(func(g *ResourceGroup) error {
 		utils.Info("Resource group %q", g.Name)
 		for _, rf := range g.ResourceFiles {
@@ -72,7 +72,6 @@ func (p *Project) Up() error {
 	if err != nil {
 		return err
 	}
-	p.printCommonInfo()
 	err = p.createNamespace(kubeContext)
 	if err != nil {
 		return err
@@ -92,7 +91,6 @@ func (p *Project) Down() error {
 	if err != nil {
 		return err
 	}
-	p.printCommonInfo()
 	err = p.resourceGraph.WalkResourceBackward(func(r *Resource, g *ResourceGroup) error {
 		return p.deleteResource(kubeContext, g, r)
 	}, func(r *Resource, g *ResourceGroup) error {
@@ -101,9 +99,54 @@ func (p *Project) Down() error {
 	// Delete namespace anyway, this may have the side-effect of deleting all resources.
 	errNamespaceDelete := p.deleteNamespace(kubeContext)
 	if errNamespaceDelete != nil {
-		utils.Error(err)
+		utils.Error(errNamespaceDelete)
 	}
 	return err
+}
+
+// Update .
+func (p *Project) Update() error {
+	kubeContext, err := kubernetes.NewContext(p.namespace, p.context, p.kubeConfig)
+	if err != nil {
+		return err
+	}
+	return p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
+		return p.updateResource(kubeContext, g, r)
+	}, nil, nil)
+}
+
+// PrintCommonInfo .
+func (p *Project) PrintCommonInfo() {
+	utils.Info("Using namespace %q", p.namespace)
+	utils.Info("Using context %q", p.context)
+	utils.Info("Using kubernetes config file %q", p.kubeConfig)
+}
+
+// PrintUpPlan .
+func (p *Project) PrintUpPlan() {
+	utils.Info("The following resources will be created:")
+	p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
+		fmt.Printf(" - %s %q\n", r.Kind, r.Name)
+		return nil
+	}, nil, nil)
+}
+
+// PrintDownPlan .
+func (p *Project) PrintDownPlan() {
+	utils.Warn("The following resources will be destroyed:")
+	p.resourceGraph.WalkResourceBackward(func(r *Resource, g *ResourceGroup) error {
+		fmt.Printf(" - %s %q\n", r.Kind, r.Name)
+		return nil
+	}, nil)
+}
+
+// PrintUpdatePlan .
+func (p *Project) PrintUpdatePlan() {
+	utils.Warn("The following resources will be updated: ")
+	p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
+		fmt.Printf(" - %s %q\n", r.Kind, r.Name)
+		return nil
+	}, nil, nil)
 }
 
 func (p *Project) resolveProjectRoot(projectFile, configRoot string) {
@@ -128,8 +171,8 @@ func (p *Project) resolveVariables(variablesFromCommand, variablesFromConfig map
 	p.variables = utils.MergeMaps(variablesFromConfig, variablesFromCommand, rivendellVariables)
 }
 
-func (p *Project) resolveResourceGraph(resourceGroupConfigs []*ResourceGroupConfig) error {
-	resourceGraph, err := ReadResourceGraph(p.rootDir, resourceGroupConfigs, p.variables)
+func (p *Project) resolveResourceGraph(resourceGroupConfigs []*ResourceGroupConfig, includeResources []string, excludeResources []string) error {
+	resourceGraph, err := ReadResourceGraph(p.rootDir, resourceGroupConfigs, p.variables, includeResources, excludeResources)
 	if err != nil {
 		return err
 	}
@@ -137,13 +180,10 @@ func (p *Project) resolveResourceGraph(resourceGroupConfigs []*ResourceGroupConf
 	return nil
 }
 
-func (p *Project) printCommonInfo() {
-	utils.Info("Using namespace %q", p.namespace)
-	utils.Info("Using context %q", p.context)
-	utils.Info("Using kubernetes config file %q", p.kubeConfig)
-}
-
 func (p *Project) createNamespace(kubeContext *kubernetes.Context) error {
+	if p.namespace == "" {
+		return nil
+	}
 	utils.Info("Creating namespace %q", p.namespace)
 	exists, err := kubeContext.Namespace().Create()
 	if err != nil {
@@ -154,6 +194,9 @@ func (p *Project) createNamespace(kubeContext *kubernetes.Context) error {
 }
 
 func (p *Project) deleteNamespace(kubeContext *kubernetes.Context) error {
+	if p.namespace == "" {
+		return nil
+	}
 	utils.Warn("Deleting namespace %q", p.namespace)
 	exists, err := kubeContext.Namespace().Delete()
 	if err != nil {
@@ -180,6 +223,16 @@ func (p *Project) deleteResource(kubeContext *kubernetes.Context, g *ResourceGro
 		return err
 	}
 	p.printDeleteResult(exists)
+	return nil
+}
+
+func (p *Project) updateResource(kubeContext *kubernetes.Context, g *ResourceGroup, r *Resource) error {
+	utils.Warn("Updating %s %q in group %q", r.Kind, r.Name, g.Name)
+	updateStatus, err := kubeContext.Resource().Update(r.Name, r.Kind, r.RawContent)
+	if err != nil {
+		return err
+	}
+	p.printUpdateResult(updateStatus)
 	return nil
 }
 
@@ -243,5 +296,16 @@ func (p *Project) printDeleteResult(exists bool) {
 		utils.Success("====> Success")
 	} else {
 		utils.Warn("====> Not exist")
+	}
+}
+
+func (p *Project) printUpdateResult(updateStatus kubernetes.UpdateStatus) {
+	switch updateStatus {
+	case kubernetes.UpdateStatusNotExist:
+		utils.Warn("====> Not exist")
+	case kubernetes.UpdateStatusExisted:
+		utils.Success("====> Success")
+	case kubernetes.UpdateStatusSkipped:
+		utils.Info2("====> Skipped")
 	}
 }

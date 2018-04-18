@@ -3,6 +3,7 @@ package project
 import (
 	"bufio"
 	"bytes"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -58,12 +59,24 @@ const (
 )
 
 // ReadResourceGraph .
-func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConfig, variables map[string]string) (*ResourceGraph, error) {
+func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConfig, variables map[string]string, includeResources []string, excludeResources []string) (*ResourceGraph, error) {
 	rg := &ResourceGraph{
 		ResourceGroups: make(map[string]*ResourceGroup),
 		RootNodes:      []string{},
 		LeafNodes:      []string{},
 	}
+	useGlobalIncludes := false
+	globalResourceFiles := []string{}
+	var err error
+	if len(includeResources) > 0 {
+		useGlobalIncludes = true
+		globalIncludePatterns := utils.PrependPaths(rootDir, includeResources)
+		globalResourceFiles, err = utils.GlobFiles(globalIncludePatterns, nil)
+		if err != nil {
+			return nil, err
+		}
+	}
+	globalExcludePatterns := utils.PrependPaths(rootDir, excludeResources)
 	for _, resourceGroupConfig := range resourceGroupConfigs {
 		g := &ResourceGroup{
 			Name:     resourceGroupConfig.Name,
@@ -79,12 +92,26 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 			rg.RootNodes = append(rg.RootNodes, g.Name)
 		}
 		includePatterns := utils.PrependPaths(rootDir, resourceGroupConfig.Resources)
-		excludePatterns := utils.PrependPaths(rootDir, resourceGroupConfig.Excludes)
+		excludePatterns := append(utils.PrependPaths(rootDir, resourceGroupConfig.Excludes), globalExcludePatterns...)
 		resourceFiles, err := utils.GlobFiles(includePatterns, excludePatterns)
 		if err != nil {
 			return nil, err
 		}
+		if useGlobalIncludes {
+			globalResourceSet := utils.NewStringSet(globalResourceFiles...)
+			resourceSet := utils.NewStringSet(resourceFiles...)
+			joinSet := globalResourceSet.Join(resourceSet)
+			resourceFiles = joinSet.ToSlice()
+			sort.Strings(resourceFiles)
+		}
 		for _, resourceFile := range resourceFiles {
+			stat, err := os.Stat(resourceFile)
+			if err != nil {
+				return nil, err
+			}
+			if stat.IsDir() {
+				continue
+			}
 			fileContent, err := utils.ExecuteTemplate(resourceFile, variables)
 			if err != nil {
 				return nil, err
@@ -101,7 +128,7 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 		}
 	}
 	sort.Strings(rg.RootNodes)
-	err := rg.resolveChildren()
+	err = rg.resolveChildren()
 	if err != nil {
 		return nil, err
 	}
@@ -122,9 +149,11 @@ func (rg *ResourceGraph) WalkForwardWithWait(f func(g *ResourceGroup) error, rea
 			if !readyResourceGroups[depGroup] {
 				for _, r := range depGroup.allResources() {
 					if !readyResources[r] {
-						err := readyFunc(r, depGroup)
-						if err != nil {
-							return err
+						if readyFunc != nil {
+							err := readyFunc(r, depGroup)
+							if err != nil {
+								return err
+							}
 						}
 						readyResources[r] = true
 					}
@@ -137,6 +166,9 @@ func (rg *ResourceGraph) WalkForwardWithWait(f func(g *ResourceGroup) error, rea
 			if err != nil {
 				return err
 			}
+		}
+		if f == nil {
+			return nil
 		}
 		return f(g)
 	})
@@ -152,15 +184,20 @@ func (rg *ResourceGraph) WalkBackwardWithWait(f func(g *ResourceGroup) error, re
 			if !readyResourceGroups[depGroup] {
 				for _, r := range depGroup.allResources() {
 					if !readyResources[r] {
-						err := readyFunc(r, depGroup)
-						if err != nil {
-							return err
+						if readyFunc != nil {
+							err := readyFunc(r, depGroup)
+							if err != nil {
+								return err
+							}
 						}
 						readyResources[r] = true
 					}
 				}
 			}
 			readyResourceGroups[depGroup] = true
+		}
+		if f == nil {
+			return nil
 		}
 		return f(g)
 	})
@@ -184,9 +221,11 @@ func (rg *ResourceGraph) WalkForward(f func(g *ResourceGroup) error) error {
 				}
 			}
 			if depVisited {
-				err := f(rg.ResourceGroups[current])
-				if err != nil {
-					return err
+				if f != nil {
+					err := f(rg.ResourceGroups[current])
+					if err != nil {
+						return err
+					}
 				}
 				visited.Add(current)
 			}
@@ -214,9 +253,11 @@ func (rg *ResourceGraph) WalkBackward(f func(g *ResourceGroup) error) error {
 				}
 			}
 			if depVisited {
-				err := f(rg.ResourceGroups[current])
-				if err != nil {
-					return err
+				if f != nil {
+					err := f(rg.ResourceGroups[current])
+					if err != nil {
+						return err
+					}
 				}
 				visited.Add(current)
 			}
@@ -231,6 +272,9 @@ func (rg *ResourceGraph) WalkResourceForward(f func(r *Resource, g *ResourceGrou
 	return rg.WalkForwardWithWait(func(g *ResourceGroup) error {
 		for _, rf := range g.ResourceFiles {
 			for _, r := range rf.Resources {
+				if f == nil {
+					return nil
+				}
 				err := f(r, g)
 				if err != nil {
 					return err
@@ -246,6 +290,9 @@ func (rg *ResourceGraph) WalkResourceBackward(f func(r *Resource, g *ResourceGro
 	return rg.WalkBackwardWithWait(func(g *ResourceGroup) error {
 		for _, rf := range g.ResourceFiles {
 			for _, r := range rf.Resources {
+				if f == nil {
+					return nil
+				}
 				err := f(r, g)
 				if err != nil {
 					return err
@@ -353,6 +400,9 @@ func (rg *ResourceGraph) cyclicDFS(current string, white, gray, black utils.Stri
 }
 
 func (rg *ResourceGraph) waitFor(wait *WaitConfig, waitFunc func(name, kind string) error) error {
+	if waitFunc == nil {
+		return nil
+	}
 	waitChan := make(chan error, 1)
 	go func() {
 		err := waitFunc(wait.Name, wait.Kind)

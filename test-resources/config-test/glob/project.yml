@@ -1,0 +1,7 @@
+root_dir: .
+resource_groups:
+  - name: items
+    resources:
+      - "items/**/*"
+    excludes:
+      - "**/bkb.yml"

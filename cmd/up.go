@@ -15,6 +15,8 @@
 package cmd
 
 import (
+	"os"
+
 	"github.com/anduintransaction/rivendell/project"
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/spf13/cobra"
@@ -27,9 +29,21 @@ var upCmd = &cobra.Command{
 	Long:  "Create all resources defined in a rivendell project file",
 	Args:  cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		p, err := project.ReadProject(args[0], namespace, context, kubeConfig, variableMap)
+		p, err := project.ReadProject(args[0], namespace, context, kubeConfig, variableMap, includeResources, excludeResources)
 		if err != nil {
 			utils.Fatal(err)
+		}
+		p.PrintCommonInfo()
+		p.PrintUpPlan()
+		if !yes {
+			utils.Ask("Create all resource?", "yes", "no")
+			ok, err := utils.ExpectAnswer("yes")
+			if err != nil {
+				utils.Fatal(err)
+			}
+			if !ok {
+				os.Exit(0)
+			}
 		}
 		err = p.Up()
 		if err != nil {

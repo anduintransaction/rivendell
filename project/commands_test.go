@@ -34,7 +34,7 @@ func (s *CommandTestSuite) TestUpAndDown() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
+	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err)
 	err = project.Up()
 	require.Nil(s.T(), err)
@@ -52,6 +52,31 @@ func (s *CommandTestSuite) TestUpAndDown() {
 	require.Nil(s.T(), err)
 }
 
+func (s *CommandTestSuite) TestUpdate() {
+	if utils.TestEnable() {
+		fmt.Println("Skipping update test")
+		return
+	}
+	projectFile := filepath.Join(s.resourceRoot, "command-test", "update", "project.yml")
+	namespace := s.testNamespace
+	context := ""
+	kubeConfig := ""
+	variables := map[string]string{
+		"tag": "1.13.12",
+	}
+	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	require.Nil(s.T(), err)
+	err = project.Up()
+	require.Nil(s.T(), err)
+	variables["tag"] = "1.13"
+	updatedProject, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	require.Nil(s.T(), err)
+	err = updatedProject.Update()
+	require.Nil(s.T(), err)
+	err = project.Down()
+	require.Nil(s.T(), err)
+}
+
 func (s *CommandTestSuite) TestWaitPod() {
 	if !utils.TestEnable() {
 		fmt.Println("Skipping wait pod")
@@ -62,7 +87,7 @@ func (s *CommandTestSuite) TestWaitPod() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.Nil(s.T(), err)
@@ -92,7 +117,7 @@ func (s *CommandTestSuite) TestWaitJob() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.Nil(s.T(), err)
@@ -133,7 +158,7 @@ func (s *CommandTestSuite) TestJobWaitTimeoutInProject() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.NotNil(s.T(), err)
@@ -153,7 +178,7 @@ func (s *CommandTestSuite) TestJobWaitFailedInProject() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.NotNil(s.T(), err)
@@ -173,7 +198,7 @@ func (s *CommandTestSuite) TestPodWaitTimeoutInProject() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.NotNil(s.T(), err)
@@ -193,7 +218,7 @@ func (s *CommandTestSuite) TestPodWaitFailedInProject() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables)
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.NotNil(s.T(), err)

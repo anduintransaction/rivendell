@@ -159,6 +159,48 @@ func (s *ResourceTestSuite) TestJobWait() {
 	require.True(s.T(), ok)
 }
 
+func (s *ResourceTestSuite) TestStaticUpdate() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping static resource update test")
+		return
+	}
+	s.testStaticUpdate("config-map", "configmap", "config-map.yml", "config-map-updated.yml")
+	s.testStaticUpdate("endpoints", "endpoints", "endpoints.yml", "endpoints-updated.yml")
+	s.testStaticUpdate("ingress", "ingress", "ingress.yml", "ingress-updated.yml")
+	s.testStaticUpdate("role", "role", "role.yml", "role-updated.yml")
+	s.testStaticUpdate("role-binding", "rolebinding", "role-binding.yml", "role-binding-updated.yml")
+	s.testStaticUpdate("secret", "secret", "secret.yml", "secret-updated.yml")
+	s.testStaticUpdate("service-account", "serviceaccount", "service-account.yml", "service-account-updated.yml")
+	s.testStaticUpdate("service", "service", "service.yml", "service-updated.yml")
+}
+
+func (s *ResourceTestSuite) TestPodBasedUpdate() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping pod-based resource update test")
+		return
+	}
+	s.testPodBasedUpdate("cronjob", "cronjob", "cronjob.yml", "cronjob-updated.yml")
+	s.testPodBasedUpdate("daemonset", "daemonset", "daemonset.yml", "daemonset-updated.yml")
+	s.testPodBasedUpdate("deployment", "deployment", "deployment.yml", "deployment-updated.yml")
+	s.testPodBasedUpdate("statefulset", "statefulset", "statefulset.yml", "statefulset-updated.yml")
+}
+
+func (s *ResourceTestSuite) TestPodUpdate() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping pod resource update test")
+		return
+	}
+	s.testPodUpdate("success", "success.yml", "success-updated.yml")
+}
+
+func (s *ResourceTestSuite) TestJobUpdate() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping job resource update test")
+		return
+	}
+	s.testJobUpdate("success", "success.yml", "success-updated.yml")
+}
+
 func (s *ResourceTestSuite) testClusterResource(name, kind, content string) {
 	s.createClusterResource(name, kind, content)
 	s.verifyExists(name, kind)
@@ -228,6 +270,46 @@ func (s *ResourceTestSuite) testJobWait(name, filename string, expectedSuccess b
 	s.deleteResource(name, "job")
 }
 
+func (s *ResourceTestSuite) testStaticUpdate(name, kind, filename, updatedFilename string) {
+	s.createStaticResource(name, kind, filename)
+	s.verifyExists(name, kind)
+	s.updateStaticResource(name, kind, updatedFilename)
+	s.updateStaticResource(name, kind, updatedFilename)
+	s.deleteResource(name, kind)
+	s.updateStaticResourceAfterDelete(name, kind, updatedFilename)
+	s.verifyNotExists(name, kind)
+}
+
+func (s *ResourceTestSuite) testPodBasedUpdate(name, kind, filename, updatedFilename string) {
+	s.createPodBasedResource(name, kind, filename)
+	s.verifyExists(name, kind)
+	s.updatePodBasedResource(name, kind, updatedFilename)
+	s.updatePodBasedResource(name, kind, updatedFilename)
+	s.deleteResource(name, kind)
+	s.updatePodBasedResourceAfterDelete(name, kind, updatedFilename)
+	s.verifyNotExists(name, kind)
+}
+
+func (s *ResourceTestSuite) testPodUpdate(name, filename, updatedFilename string) {
+	s.createPodResource(name, filename)
+	s.verifyExists(name, "pod")
+	s.updatePodResource(name, updatedFilename)
+	s.updatePodResource(name, updatedFilename)
+	s.deleteResource(name, "pod")
+	s.updatePodResourceAfterDelete(name, updatedFilename)
+	s.verifyNotExists(name, "pod")
+}
+
+func (s *ResourceTestSuite) testJobUpdate(name, filename, updatedFilename string) {
+	s.createJobResource(name, filename)
+	s.verifyExists(name, "job")
+	s.updateJobResource(name, updatedFilename)
+	s.updateJobResource(name, updatedFilename)
+	s.deleteResource(name, "job")
+	s.updateJobResourceAfterDelete(name, updatedFilename)
+	s.verifyNotExists(name, "job")
+}
+
 func (s *ResourceTestSuite) createClusterResource(name, kind, content string) {
 	s.createResourceFromContent(name, kind, content, false)
 }
@@ -256,6 +338,16 @@ func (s *ResourceTestSuite) recreateStaticResource(name, kind, filename string) 
 	s.createResourceFromFile(name, kind, path, true)
 }
 
+func (s *ResourceTestSuite) updateStaticResource(name, kind, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "static", updatedFilename)
+	s.updateResourceFromFile(name, kind, path, UpdateStatusExisted)
+}
+
+func (s *ResourceTestSuite) updateStaticResourceAfterDelete(name, kind, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "static", updatedFilename)
+	s.updateResourceFromFile(name, kind, path, UpdateStatusNotExist)
+}
+
 func (s *ResourceTestSuite) createPodBasedResource(name, kind, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", filename)
 	s.createResourceFromFile(name, kind, path, false)
@@ -264,6 +356,16 @@ func (s *ResourceTestSuite) createPodBasedResource(name, kind, filename string) 
 func (s *ResourceTestSuite) recreatePodBasedResource(name, kind, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", filename)
 	s.createResourceFromFile(name, kind, path, true)
+}
+
+func (s *ResourceTestSuite) updatePodBasedResource(name, kind, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", updatedFilename)
+	s.updateResourceFromFile(name, kind, path, UpdateStatusExisted)
+}
+
+func (s *ResourceTestSuite) updatePodBasedResourceAfterDelete(name, kind, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", updatedFilename)
+	s.updateResourceFromFile(name, kind, path, UpdateStatusNotExist)
 }
 
 func (s *ResourceTestSuite) createPodResource(name, filename string) {
@@ -276,6 +378,16 @@ func (s *ResourceTestSuite) recreatePodResource(name, filename string) {
 	s.createResourceFromFile(name, "pod", path, true)
 }
 
+func (s *ResourceTestSuite) updatePodResource(name, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod", updatedFilename)
+	s.updateResourceFromFile(name, "pod", path, UpdateStatusSkipped)
+}
+
+func (s *ResourceTestSuite) updatePodResourceAfterDelete(name, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod", updatedFilename)
+	s.updateResourceFromFile(name, "pod", path, UpdateStatusSkipped)
+}
+
 func (s *ResourceTestSuite) createJobResource(name, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "job", filename)
 	s.createResourceFromFile(name, "job", path, false)
@@ -284,6 +396,16 @@ func (s *ResourceTestSuite) createJobResource(name, filename string) {
 func (s *ResourceTestSuite) recreateJobResource(name, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "job", filename)
 	s.createResourceFromFile(name, "job", path, true)
+}
+
+func (s *ResourceTestSuite) updateJobResource(name, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "job", updatedFilename)
+	s.updateResourceFromFile(name, "job", path, UpdateStatusSkipped)
+}
+
+func (s *ResourceTestSuite) updateJobResourceAfterDelete(name, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "job", updatedFilename)
+	s.updateResourceFromFile(name, "job", path, UpdateStatusSkipped)
 }
 
 func (s *ResourceTestSuite) createResourceFromFile(name, kind, path string, expectedExists bool) {
@@ -296,6 +418,14 @@ func (s *ResourceTestSuite) createResourceFromFile(name, kind, path string, expe
 	}
 	require.Nil(s.T(), err, "should %s %s %q", create, kind, name)
 	require.Equal(s.T(), expectedExists, exists, "should %s %s %q", create, kind, name)
+}
+
+func (s *ResourceTestSuite) updateResourceFromFile(name, kind, path string, expectedUpdateStatus UpdateStatus) {
+	content, err := ioutil.ReadFile(path)
+	require.Nil(s.T(), err, "should read %q", path)
+	updateStatus, err := s.kubeContext.Resource().Update(name, kind, string(content))
+	require.Nil(s.T(), err, "should update resource %s %q", kind, name)
+	require.Equal(s.T(), expectedUpdateStatus, updateStatus)
 }
 
 func (s *ResourceTestSuite) verifyExists(name, kind string) {

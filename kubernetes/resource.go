@@ -95,6 +95,48 @@ func (r *Resource) Delete(name, kind string) (exists bool, err error) {
 	return
 }
 
+// UpdateStatus .
+type UpdateStatus int
+
+// UpdateStatus values
+const (
+	UpdateStatusNotExist UpdateStatus = iota
+	UpdateStatusExisted
+	UpdateStatusSkipped
+)
+
+// Update .
+func (r *Resource) Update(name, kind, rawContent string) (updateStatus UpdateStatus, err error) {
+	kind = strings.ToLower(kind)
+	if kind == "pod" || kind == "job" {
+		return UpdateStatusSkipped, nil
+	}
+	status, err := r.getStatus(name, kind)
+	if err != nil {
+		return UpdateStatusNotExist, err
+	}
+	if status == rsStatusUnknown {
+		return UpdateStatusNotExist, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
+	}
+	if status == rsStatusNotExist || status == rsStatusTerminating {
+		return UpdateStatusNotExist, nil
+	}
+	updateStatus = UpdateStatusExisted
+	args := r.context.completeArgs([]string{"apply", "-f", "-"})
+	cmd := utils.NewCommand("kubectl", args...)
+	cmd.RedirectToStandard()
+	cmd.SetStdin([]byte(rawContent))
+	cmdResult, err := cmd.Run()
+	if err != nil {
+		return
+	}
+	if cmdResult.ExitCode != 0 {
+		err = ErrCommandExitCode{cmdResult.ExitCode}
+		return
+	}
+	return
+}
+
 // Wait .
 func (r *Resource) Wait(name, kind string) (success bool, err error) {
 	kind = strings.ToLower(kind)
