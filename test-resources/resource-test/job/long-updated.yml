@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: long
+spec:
+  template:
+    metadata:
+      name: job
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: job
+          image: ubuntu:16.10
+          args:
+            - sh
+            - -c
+            - sleep 10000

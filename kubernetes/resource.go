@@ -137,6 +137,45 @@ func (r *Resource) Update(name, kind, rawContent string) (updateStatus UpdateSta
 	return
 }
 
+// Upgrade .
+func (r *Resource) Upgrade(name, kind, rawContent string) (updateStatus UpdateStatus, err error) {
+	kind = strings.ToLower(kind)
+	status, err := r.getStatus(name, kind)
+	if err != nil {
+		return UpdateStatusNotExist, err
+	}
+	if status == rsStatusUnknown {
+		return UpdateStatusNotExist, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
+	}
+	if (kind == "pod" || kind == "job") && (status == rsStatusActive || status == rsStatusPending) {
+		return UpdateStatusSkipped, nil
+	}
+	if status == rsStatusNotExist || status == rsStatusTerminating {
+		updateStatus = UpdateStatusNotExist
+	} else {
+		updateStatus = UpdateStatusExisted
+	}
+	if kind == "pod" || kind == "job" {
+		_, err = r.Delete(name, kind)
+		if err != nil {
+			return UpdateStatusNotExist, err
+		}
+	}
+	args := r.context.completeArgs([]string{"apply", "-f", "-"})
+	cmd := utils.NewCommand("kubectl", args...)
+	cmd.RedirectToStandard()
+	cmd.SetStdin([]byte(rawContent))
+	cmdResult, err := cmd.Run()
+	if err != nil {
+		return
+	}
+	if cmdResult.ExitCode != 0 {
+		err = ErrCommandExitCode{cmdResult.ExitCode}
+		return
+	}
+	return
+}
+
 // Wait .
 func (r *Resource) Wait(name, kind string) (success bool, err error) {
 	kind = strings.ToLower(kind)

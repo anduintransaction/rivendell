@@ -53,7 +53,7 @@ func (s *CommandTestSuite) TestUpAndDown() {
 }
 
 func (s *CommandTestSuite) TestUpdate() {
-	if utils.TestEnable() {
+	if !utils.TestEnable() {
 		fmt.Println("Skipping update test")
 		return
 	}
@@ -72,6 +72,37 @@ func (s *CommandTestSuite) TestUpdate() {
 	updatedProject, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
 	require.Nil(s.T(), err)
 	err = updatedProject.Update()
+	require.Nil(s.T(), err)
+	err = project.Down()
+	require.Nil(s.T(), err)
+}
+
+func (s *CommandTestSuite) TestUpgrade() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping upgrade test")
+		return
+	}
+	projectFile := filepath.Join(s.resourceRoot, "command-test", "upgrade", "project.yml")
+	namespace := s.testNamespace
+	context := ""
+	kubeConfig := ""
+	variables := map[string]string{
+		"nginxTag":  "1.13.12",
+		"ubuntuTag": "16.04",
+	}
+	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	require.Nil(s.T(), err)
+	err = project.Up()
+	require.Nil(s.T(), err)
+	err = Wait(namespace, context, kubeConfig, "job", "success", 60)
+	require.Nil(s.T(), err)
+	variables["nginxTag"] = "1.13"
+	variables["ubuntuTag"] = "16.10"
+	updatedProject, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	require.Nil(s.T(), err)
+	err = updatedProject.Upgrade()
+	require.Nil(s.T(), err)
+	err = Wait(namespace, context, kubeConfig, "job", "success", 60)
 	require.Nil(s.T(), err)
 	err = project.Down()
 	require.Nil(s.T(), err)

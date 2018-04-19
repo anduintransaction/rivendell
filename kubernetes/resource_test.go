@@ -201,6 +201,68 @@ func (s *ResourceTestSuite) TestJobUpdate() {
 	s.testJobUpdate("success", "success.yml", "success-updated.yml")
 }
 
+func (s *ResourceTestSuite) TestStaticUpgrade() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping static resource upgrade test")
+		return
+	}
+	s.testStaticUpgrade("config-map", "configmap", "config-map.yml", "config-map-updated.yml")
+	s.testStaticUpgrade("endpoints", "endpoints", "endpoints.yml", "endpoints-updated.yml")
+	s.testStaticUpgrade("ingress", "ingress", "ingress.yml", "ingress-updated.yml")
+	s.testStaticUpgrade("role", "role", "role.yml", "role-updated.yml")
+	s.testStaticUpgrade("role-binding", "rolebinding", "role-binding.yml", "role-binding-updated.yml")
+	s.testStaticUpgrade("secret", "secret", "secret.yml", "secret-updated.yml")
+	s.testStaticUpgrade("service-account", "serviceaccount", "service-account.yml", "service-account-updated.yml")
+	s.testStaticUpgrade("service", "service", "service.yml", "service-updated.yml")
+}
+
+func (s *ResourceTestSuite) TestPodBasedUpgrade() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping pod-based resource upgrade test")
+		return
+	}
+	s.testPodBasedUpgrade("cronjob", "cronjob", "cronjob.yml", "cronjob-updated.yml")
+	s.testPodBasedUpgrade("daemonset", "daemonset", "daemonset.yml", "daemonset-updated.yml")
+	s.testPodBasedUpgrade("deployment", "deployment", "deployment.yml", "deployment-updated.yml")
+	s.testPodBasedUpgrade("statefulset", "statefulset", "statefulset.yml", "statefulset-updated.yml")
+}
+
+func (s *ResourceTestSuite) TestPodUpgrade() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping pod-based resource upgrade test")
+		return
+	}
+	s.createPodResource("completed", "completed.yml")
+	s.verifyExists("completed", "pod")
+	s.wait("completed", "pod", true)
+	s.upgradePodResource("completed", "completed-updated.yml")
+	s.deleteResource("completed", "pod")
+	s.verifyNotExists("completed", "pod")
+	s.createPodResource("stop-slow", "stop-slow.yml")
+	s.verifyExists("stop-slow", "pod")
+	s.upgradeRunningPodResource("stop-slow", "stop-slow-updated.yml")
+	s.deleteResource("stop-slow", "pod")
+	s.verifyNotExists("stop-slow", "pod")
+}
+
+func (s *ResourceTestSuite) TestJobUpgrade() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping pod-based resource upgrade test")
+		return
+	}
+	s.createJobResource("success", "success.yml")
+	s.verifyExists("success", "job")
+	s.wait("success", "job", true)
+	s.upgradeJobResource("success", "success-updated.yml")
+	s.deleteResource("success", "job")
+	s.verifyNotExists("success", "job")
+	s.createJobResource("long", "long.yml")
+	s.verifyExists("long", "job")
+	s.upgradeRunningJobResource("long", "long-updated.yml")
+	s.deleteResource("long", "job")
+	s.verifyNotExists("long", "job")
+}
+
 func (s *ResourceTestSuite) testClusterResource(name, kind, content string) {
 	s.createClusterResource(name, kind, content)
 	s.verifyExists(name, kind)
@@ -310,6 +372,30 @@ func (s *ResourceTestSuite) testJobUpdate(name, filename, updatedFilename string
 	s.verifyNotExists(name, "job")
 }
 
+func (s *ResourceTestSuite) testStaticUpgrade(name, kind, filename, updatedFilename string) {
+	s.createStaticResource(name, kind, filename)
+	s.verifyExists(name, kind)
+	s.upgradeStaticResource(name, kind, updatedFilename)
+	s.upgradeStaticResource(name, kind, updatedFilename)
+	s.deleteResource(name, kind)
+	s.upgradeStaticResourceAfterDelete(name, kind, updatedFilename)
+	s.verifyExists(name, kind)
+	s.deleteResource(name, kind)
+	s.verifyNotExists(name, kind)
+}
+
+func (s *ResourceTestSuite) testPodBasedUpgrade(name, kind, filename, updatedFilename string) {
+	s.createPodBasedResource(name, kind, filename)
+	s.verifyExists(name, kind)
+	s.upgradePodBasedResource(name, kind, updatedFilename)
+	s.upgradePodBasedResource(name, kind, updatedFilename)
+	s.deleteResource(name, kind)
+	s.upgradePodBasedResourceAfterDelete(name, kind, updatedFilename)
+	s.verifyExists(name, kind)
+	s.deleteResource(name, kind)
+	s.verifyNotExists(name, kind)
+}
+
 func (s *ResourceTestSuite) createClusterResource(name, kind, content string) {
 	s.createResourceFromContent(name, kind, content, false)
 }
@@ -348,6 +434,16 @@ func (s *ResourceTestSuite) updateStaticResourceAfterDelete(name, kind, updatedF
 	s.updateResourceFromFile(name, kind, path, UpdateStatusNotExist)
 }
 
+func (s *ResourceTestSuite) upgradeStaticResource(name, kind, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "static", updatedFilename)
+	s.upgradeResourceFromFile(name, kind, path, UpdateStatusExisted)
+}
+
+func (s *ResourceTestSuite) upgradeStaticResourceAfterDelete(name, kind, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "static", updatedFilename)
+	s.upgradeResourceFromFile(name, kind, path, UpdateStatusNotExist)
+}
+
 func (s *ResourceTestSuite) createPodBasedResource(name, kind, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", filename)
 	s.createResourceFromFile(name, kind, path, false)
@@ -366,6 +462,16 @@ func (s *ResourceTestSuite) updatePodBasedResource(name, kind, updatedFilename s
 func (s *ResourceTestSuite) updatePodBasedResourceAfterDelete(name, kind, updatedFilename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", updatedFilename)
 	s.updateResourceFromFile(name, kind, path, UpdateStatusNotExist)
+}
+
+func (s *ResourceTestSuite) upgradePodBasedResource(name, kind, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", updatedFilename)
+	s.upgradeResourceFromFile(name, kind, path, UpdateStatusExisted)
+}
+
+func (s *ResourceTestSuite) upgradePodBasedResourceAfterDelete(name, kind, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod-based", updatedFilename)
+	s.upgradeResourceFromFile(name, kind, path, UpdateStatusNotExist)
 }
 
 func (s *ResourceTestSuite) createPodResource(name, filename string) {
@@ -388,6 +494,16 @@ func (s *ResourceTestSuite) updatePodResourceAfterDelete(name, updatedFilename s
 	s.updateResourceFromFile(name, "pod", path, UpdateStatusSkipped)
 }
 
+func (s *ResourceTestSuite) upgradePodResource(name, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod", updatedFilename)
+	s.upgradeResourceFromFile(name, "pod", path, UpdateStatusExisted)
+}
+
+func (s *ResourceTestSuite) upgradeRunningPodResource(name, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "pod", updatedFilename)
+	s.upgradeResourceFromFile(name, "pod", path, UpdateStatusSkipped)
+}
+
 func (s *ResourceTestSuite) createJobResource(name, filename string) {
 	path := filepath.Join(s.resourceRoot, "resource-test", "job", filename)
 	s.createResourceFromFile(name, "job", path, false)
@@ -408,6 +524,16 @@ func (s *ResourceTestSuite) updateJobResourceAfterDelete(name, updatedFilename s
 	s.updateResourceFromFile(name, "job", path, UpdateStatusSkipped)
 }
 
+func (s *ResourceTestSuite) upgradeJobResource(name, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "job", updatedFilename)
+	s.upgradeResourceFromFile(name, "job", path, UpdateStatusExisted)
+}
+
+func (s *ResourceTestSuite) upgradeRunningJobResource(name, updatedFilename string) {
+	path := filepath.Join(s.resourceRoot, "resource-test", "job", updatedFilename)
+	s.upgradeResourceFromFile(name, "job", path, UpdateStatusSkipped)
+}
+
 func (s *ResourceTestSuite) createResourceFromFile(name, kind, path string, expectedExists bool) {
 	content, err := ioutil.ReadFile(path)
 	require.Nil(s.T(), err, "should read %q", path)
@@ -424,6 +550,14 @@ func (s *ResourceTestSuite) updateResourceFromFile(name, kind, path string, expe
 	content, err := ioutil.ReadFile(path)
 	require.Nil(s.T(), err, "should read %q", path)
 	updateStatus, err := s.kubeContext.Resource().Update(name, kind, string(content))
+	require.Nil(s.T(), err, "should update resource %s %q", kind, name)
+	require.Equal(s.T(), expectedUpdateStatus, updateStatus)
+}
+
+func (s *ResourceTestSuite) upgradeResourceFromFile(name, kind, path string, expectedUpdateStatus UpdateStatus) {
+	content, err := ioutil.ReadFile(path)
+	require.Nil(s.T(), err, "should read %q", path)
+	updateStatus, err := s.kubeContext.Resource().Upgrade(name, kind, string(content))
 	require.Nil(s.T(), err, "should update resource %s %q", kind, name)
 	require.Equal(s.T(), expectedUpdateStatus, updateStatus)
 }
@@ -450,6 +584,12 @@ func (s *ResourceTestSuite) redeleteResource(name, kind string) {
 	exists, err := s.kubeContext.Resource().Delete(name, kind)
 	require.Nil(s.T(), err, "should redelete %s %q", kind, name)
 	require.False(s.T(), exists, "should redelete %s %q", kind, name)
+}
+
+func (s *ResourceTestSuite) wait(name, kind string, expectedExists bool) {
+	exists, err := s.kubeContext.Resource().Wait(name, kind)
+	require.Nil(s.T(), err, "should wait for %s %q successfully", kind, name)
+	require.Equal(s.T(), expectedExists, exists)
 }
 
 func TestResource(t *testing.T) {

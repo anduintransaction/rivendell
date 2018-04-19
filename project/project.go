@@ -115,6 +115,17 @@ func (p *Project) Update() error {
 	}, nil, nil)
 }
 
+// Upgrade .
+func (p *Project) Upgrade() error {
+	kubeContext, err := kubernetes.NewContext(p.namespace, p.context, p.kubeConfig)
+	if err != nil {
+		return err
+	}
+	return p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
+		return p.upgradeResource(kubeContext, g, r)
+	}, nil, nil)
+}
+
 // PrintCommonInfo .
 func (p *Project) PrintCommonInfo() {
 	utils.Info("Using namespace %q", p.namespace)
@@ -229,6 +240,16 @@ func (p *Project) deleteResource(kubeContext *kubernetes.Context, g *ResourceGro
 func (p *Project) updateResource(kubeContext *kubernetes.Context, g *ResourceGroup, r *Resource) error {
 	utils.Warn("Updating %s %q in group %q", r.Kind, r.Name, g.Name)
 	updateStatus, err := kubeContext.Resource().Update(r.Name, r.Kind, r.RawContent)
+	if err != nil {
+		return err
+	}
+	p.printUpdateResult(updateStatus)
+	return nil
+}
+
+func (p *Project) upgradeResource(kubeContext *kubernetes.Context, g *ResourceGroup, r *Resource) error {
+	utils.Warn("Upgrading %s %q in group %q", r.Kind, r.Name, g.Name)
+	updateStatus, err := kubeContext.Resource().Upgrade(r.Name, r.Kind, r.RawContent)
 	if err != nil {
 		return err
 	}
