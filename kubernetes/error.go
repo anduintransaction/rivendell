@@ -46,7 +46,7 @@ func (err ErrInvalidResponse) Error() string {
 type ErrUnknownStatus struct {
 	Name   string
 	Kind   string
-	status rsStatus
+	status RsStatus
 }
 
 func (err ErrUnknownStatus) Error() string {

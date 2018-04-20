@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -261,6 +262,45 @@ func (s *ResourceTestSuite) TestJobUpgrade() {
 	s.upgradeRunningJobResource("long", "long-updated.yml")
 	s.deleteResource("long", "job")
 	s.verifyNotExists("long", "job")
+}
+
+func (s *ResourceTestSuite) TestGetPodContainerName() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping get pod container name test")
+		return
+	}
+	s.createPodResource("multiple-containers", "multiple-containers.yml")
+	containerName, err := s.kubeContext.Resource().getFirstContainerNameFromPod("multiple-containers")
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), "container1", containerName)
+	s.deleteResource("multiple-containers", "pod")
+}
+
+func (s *ResourceTestSuite) TestLogs() {
+	if !utils.TestEnable() {
+		fmt.Println("Skipping logs test")
+		return
+	}
+	s.createPodResource("logs", "logs.yml")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+	err := s.kubeContext.Resource().Logs("logs", "", stdout, stderr)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), "test\n", stdout.String())
+	status, err := s.kubeContext.Resource().GetStatus("logs", "pod")
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), RsStatusSucceeded, status)
+	stdout = &bytes.Buffer{}
+	stderr = &bytes.Buffer{}
+	err = s.kubeContext.Resource().Logs("logs", "", stdout, stderr)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), "test\n", stdout.String())
+	s.deleteResource("logs", "pod")
+	stdout = &bytes.Buffer{}
+	stderr = &bytes.Buffer{}
+	err = s.kubeContext.Resource().Logs("logs", "", stdout, stderr)
+	_, ok := stacktrace.RootCause(err).(ErrNotExist)
+	require.True(s.T(), ok)
 }
 
 func (s *ResourceTestSuite) testClusterResource(name, kind, content string) {

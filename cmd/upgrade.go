@@ -24,7 +24,7 @@ import (
 
 // upgradeCmd represents the upgrade command
 var upgradeCmd = &cobra.Command{
-	Use:   "upgrade",
+	Use:   "upgrade [project file]",
 	Short: "Upgrade all declared resources, including pod and job",
 	Long: `Upgrade all declated resources, including pod and job
 

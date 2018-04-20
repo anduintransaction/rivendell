@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"io"
 	"io/ioutil"
 	"strings"
 	"time"
@@ -18,18 +19,18 @@ type Resource struct {
 // Create resource
 func (r *Resource) Create(name, kind, rawContent string) (exists bool, err error) {
 	kind = strings.ToLower(kind)
-	status, err := r.getStatus(name, kind)
+	status, err := r.GetStatus(name, kind)
 	if err != nil {
 		return false, err
 	}
-	if status == rsStatusUnknown {
+	if status == RsStatusUnknown {
 		return false, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 	}
-	if status == rsStatusActive || status == rsStatusPending || status == rsStatusSucceeded || status == rsStatusFailed {
+	if status == RsStatusActive || status == RsStatusPending || status == RsStatusSucceeded || status == RsStatusFailed {
 		exists = true
 		return
 	}
-	if status == rsStatusTerminating {
+	if status == RsStatusTerminating {
 		err = r.waitForTerminating(name, kind)
 		if err != nil {
 			return false, err
@@ -54,14 +55,14 @@ func (r *Resource) Create(name, kind, rawContent string) (exists bool, err error
 // Exists check
 func (r *Resource) Exists(name, kind string) (exists bool, err error) {
 	kind = strings.ToLower(kind)
-	status, err := r.getStatus(name, kind)
+	status, err := r.GetStatus(name, kind)
 	if err != nil {
 		return false, err
 	}
 	switch status {
-	case rsStatusActive, rsStatusPending, rsStatusSucceeded, rsStatusFailed:
+	case RsStatusActive, RsStatusPending, RsStatusSucceeded, RsStatusFailed:
 		return true, nil
-	case rsStatusNotExist, rsStatusTerminating:
+	case RsStatusNotExist, RsStatusTerminating:
 		return false, nil
 	default:
 		return false, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
@@ -71,14 +72,14 @@ func (r *Resource) Exists(name, kind string) (exists bool, err error) {
 // Delete .
 func (r *Resource) Delete(name, kind string) (exists bool, err error) {
 	kind = strings.ToLower(kind)
-	status, err := r.getStatus(name, kind)
+	status, err := r.GetStatus(name, kind)
 	if err != nil {
 		return false, err
 	}
-	if status == rsStatusUnknown {
+	if status == RsStatusUnknown {
 		return false, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 	}
-	if status == rsStatusNotExist || status == rsStatusTerminating {
+	if status == RsStatusNotExist || status == RsStatusTerminating {
 		exists = false
 		return
 	}
@@ -111,14 +112,14 @@ func (r *Resource) Update(name, kind, rawContent string) (updateStatus UpdateSta
 	if kind == "pod" || kind == "job" {
 		return UpdateStatusSkipped, nil
 	}
-	status, err := r.getStatus(name, kind)
+	status, err := r.GetStatus(name, kind)
 	if err != nil {
 		return UpdateStatusNotExist, err
 	}
-	if status == rsStatusUnknown {
+	if status == RsStatusUnknown {
 		return UpdateStatusNotExist, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 	}
-	if status == rsStatusNotExist || status == rsStatusTerminating {
+	if status == RsStatusNotExist || status == RsStatusTerminating {
 		return UpdateStatusNotExist, nil
 	}
 	updateStatus = UpdateStatusExisted
@@ -140,17 +141,17 @@ func (r *Resource) Update(name, kind, rawContent string) (updateStatus UpdateSta
 // Upgrade .
 func (r *Resource) Upgrade(name, kind, rawContent string) (updateStatus UpdateStatus, err error) {
 	kind = strings.ToLower(kind)
-	status, err := r.getStatus(name, kind)
+	status, err := r.GetStatus(name, kind)
 	if err != nil {
 		return UpdateStatusNotExist, err
 	}
-	if status == rsStatusUnknown {
+	if status == RsStatusUnknown {
 		return UpdateStatusNotExist, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 	}
-	if (kind == "pod" || kind == "job") && (status == rsStatusActive || status == rsStatusPending) {
+	if (kind == "pod" || kind == "job") && (status == RsStatusActive || status == RsStatusPending) {
 		return UpdateStatusSkipped, nil
 	}
-	if status == rsStatusNotExist || status == rsStatusTerminating {
+	if status == RsStatusNotExist || status == RsStatusTerminating {
 		updateStatus = UpdateStatusNotExist
 	} else {
 		updateStatus = UpdateStatusExisted
@@ -184,18 +185,18 @@ func (r *Resource) Wait(name, kind string) (success bool, err error) {
 	}
 	waitDelay := 5 * time.Second
 	for {
-		status, err := r.getStatus(name, kind)
+		status, err := r.GetStatus(name, kind)
 		if err != nil {
 			return false, err
 		}
 		switch status {
-		case rsStatusNotExist:
+		case RsStatusNotExist:
 			return false, stacktrace.Propagate(ErrNotExist{name, kind}, "not exist")
-		case rsStatusActive, rsStatusPending, rsStatusTerminating:
+		case RsStatusActive, RsStatusPending, RsStatusTerminating:
 			time.Sleep(waitDelay)
-		case rsStatusSucceeded:
+		case RsStatusSucceeded:
 			return true, nil
-		case rsStatusFailed:
+		case RsStatusFailed:
 			return false, nil
 		default:
 			return false, stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
@@ -203,7 +204,55 @@ func (r *Resource) Wait(name, kind string) (success bool, err error) {
 	}
 }
 
-func (r *Resource) getStatus(name, kind string) (rsStatus, error) {
+// Logs .
+func (r *Resource) Logs(name, containerName string, stdout io.Writer, stderr io.Writer) error {
+	kind := "pod"
+	status, err := r.GetStatus(name, kind)
+	if err != nil {
+		return err
+	}
+	switch status {
+	case RsStatusNotExist, RsStatusTerminating:
+		return stacktrace.Propagate(ErrNotExist{name, kind}, "not exist")
+	case RsStatusUnknown:
+		return stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
+	case RsStatusPending:
+		err = r.waitForPending(name, kind)
+		if err != nil {
+			return err
+		}
+	}
+	if containerName == "" {
+		containerName, err = r.getFirstContainerName(kind, name)
+		if err != nil {
+			return err
+		}
+	}
+	firstRun := true
+	for {
+		var args []string
+		if firstRun {
+			args = r.context.completeArgs([]string{"logs", "-f", "-c", containerName, name})
+			firstRun = false
+		} else {
+			args = r.context.completeArgs([]string{"logs", "-f", "-c", containerName, "--tail", "10", name})
+		}
+		cmd := utils.NewCommand("kubectl", args...)
+		cmd.SetStdout(stdout)
+		cmd.SetStderr(stderr)
+		cmdResult, err := cmd.Run()
+		if err != nil {
+			return err
+		}
+		if cmdResult.ExitCode == 0 {
+			break
+		}
+	}
+	return nil
+}
+
+// GetStatus .
+func (r *Resource) GetStatus(name, kind string) (RsStatus, error) {
 	switch kind {
 	case "pod":
 		return r.getPodStatus(name)
@@ -214,109 +263,109 @@ func (r *Resource) getStatus(name, kind string) (rsStatus, error) {
 	}
 }
 
-func (r *Resource) getPodStatus(name string) (rsStatus, error) {
+func (r *Resource) getPodStatus(name string) (RsStatus, error) {
 	args := r.context.completeArgs([]string{"get", "pod", name, "-o", "yaml"})
 	cmdResult, err := utils.NewCommand("kubectl", args...).Run()
 	if err != nil {
-		return rsStatusUnknown, err
+		return RsStatusUnknown, err
 	}
 	if cmdResult.ExitCode != 0 {
 		output, err := ioutil.ReadAll(cmdResult.Stderr)
 		if err != nil {
-			return rsStatusUnknown, stacktrace.Propagate(err, "cannot read stderr")
+			return RsStatusUnknown, stacktrace.Propagate(err, "cannot read stderr")
 		}
 		errOutput := string(output)
 		if strings.Contains(errOutput, "(NotFound)") {
-			return rsStatusNotExist, nil
+			return RsStatusNotExist, nil
 		}
-		return rsStatusUnknown, stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, errOutput}, "error execute command")
+		return RsStatusUnknown, stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, errOutput}, "error execute command")
 	}
 	output, err := ioutil.ReadAll(cmdResult.Stdout)
 	if err != nil {
-		return rsStatusUnknown, stacktrace.Propagate(err, "cannot read stdout")
+		return RsStatusUnknown, stacktrace.Propagate(err, "cannot read stdout")
 	}
 	podInfo := &podResourceInfo{}
 	err = yaml.Unmarshal(output, podInfo)
 	if err != nil {
-		return rsStatusUnknown, stacktrace.Propagate(ErrInvalidResponse{err, string(output)}, "invalid response")
+		return RsStatusUnknown, stacktrace.Propagate(ErrInvalidResponse{err, string(output)}, "invalid response")
 	}
 	if podInfo.Status == nil || podInfo.Metadata == nil {
-		return rsStatusUnknown, nil
+		return RsStatusUnknown, nil
 	}
 	switch podInfo.Status.Phase {
 	case "Pending":
 		if podInfo.Metadata.DeletionTimestamp == "" {
-			return rsStatusPending, nil
+			return RsStatusPending, nil
 		}
-		return rsStatusTerminating, nil
+		return RsStatusTerminating, nil
 	case "Running":
 		if podInfo.Metadata.DeletionTimestamp == "" {
-			return rsStatusActive, nil
+			return RsStatusActive, nil
 		}
-		return rsStatusTerminating, nil
+		return RsStatusTerminating, nil
 	case "Succeeded":
-		return rsStatusSucceeded, nil
+		return RsStatusSucceeded, nil
 	case "Failed":
-		return rsStatusFailed, nil
+		return RsStatusFailed, nil
 	default:
-		return rsStatusUnknown, nil
+		return RsStatusUnknown, nil
 	}
 }
 
-func (r *Resource) getJobStatus(name string) (rsStatus, error) {
+func (r *Resource) getJobStatus(name string) (RsStatus, error) {
 	args := r.context.completeArgs([]string{"get", "job", name, "-o", "yaml"})
 	cmdResult, err := utils.NewCommand("kubectl", args...).Run()
 	if err != nil {
-		return rsStatusUnknown, err
+		return RsStatusUnknown, err
 	}
 	if cmdResult.ExitCode != 0 {
 		output, _ := ioutil.ReadAll(cmdResult.Stderr)
 		errOutput := string(output)
 		if strings.Contains(errOutput, "(NotFound)") {
-			return rsStatusNotExist, nil
+			return RsStatusNotExist, nil
 		}
-		return rsStatusUnknown, stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, errOutput}, "error execute command")
+		return RsStatusUnknown, stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, errOutput}, "error execute command")
 	}
 	output, err := ioutil.ReadAll(cmdResult.Stdout)
 	if err != nil {
-		return rsStatusUnknown, stacktrace.Propagate(err, "cannot read stdout")
+		return RsStatusUnknown, stacktrace.Propagate(err, "cannot read stdout")
 	}
 	jobInfo := &jobResourceInfo{}
 	err = yaml.Unmarshal(output, jobInfo)
 	if err != nil {
-		return rsStatusUnknown, stacktrace.Propagate(ErrInvalidResponse{err, string(output)}, "invalid response")
+		return RsStatusUnknown, stacktrace.Propagate(ErrInvalidResponse{err, string(output)}, "invalid response")
 	}
 	if jobInfo.Status == nil {
-		return rsStatusUnknown, nil
+		return RsStatusUnknown, nil
 	}
 	if len(jobInfo.Status.Conditions) == 0 {
-		return rsStatusActive, nil
+		return RsStatusActive, nil
 	}
 	condition := jobInfo.Status.Conditions[0]
 	switch condition.Type {
 	case "Complete":
-		return rsStatusSucceeded, nil
+		return RsStatusSucceeded, nil
 	case "Failed":
-		return rsStatusFailed, nil
+		return RsStatusFailed, nil
 	}
-	return rsStatusUnknown, nil
+	return RsStatusUnknown, nil
 }
 
 func (r *Resource) waitForPending(name, kind string) error {
 	check := 0
 	for {
-		status, err := r.getStatus(name, kind)
+		status, err := r.GetStatus(name, kind)
 		if err != nil {
 			return err
 		}
 		switch status {
-		case rsStatusPending:
+		case RsStatusPending:
 			time.Sleep(defaultPendingInterval)
 			check++
 			if check > defaultPendingCheckLimit {
 				return ErrTimeout{}
 			}
-		case rsStatusUnknown:
+		case RsStatusUnknown:
 			return stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 		default:
 			return nil
@@ -327,18 +376,18 @@ func (r *Resource) waitForPending(name, kind string) error {
 func (r *Resource) waitForTerminating(name, kind string) error {
 	check := 0
 	for {
-		status, err := r.getStatus(name, kind)
+		status, err := r.GetStatus(name, kind)
 		if err != nil {
 			return err
 		}
 		switch status {
-		case rsStatusTerminating:
+		case RsStatusTerminating:
 			time.Sleep(defaultTerminateInterval)
 			check++
 			if check > defaultTerminateCheckLimit {
 				return stacktrace.Propagate(ErrTimeout{}, "timeout waiting for terminating %s %q", kind, name)
 			}
-		case rsStatusUnknown:
+		case RsStatusUnknown:
 			return stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 		default:
 			return nil
@@ -346,30 +395,31 @@ func (r *Resource) waitForTerminating(name, kind string) error {
 	}
 }
 
-func (r *Resource) waitForPod(name string) (success bool, err error) {
-	waitDelay := 5 * time.Second
-	for {
-		status, err := r.getStatus(name, "pod")
-		if err != nil {
-			return false, err
-		}
-		switch status {
-		case rsStatusNotExist:
-			return false, stacktrace.Propagate(ErrNotExist{name, "pod"}, "not exist")
-		case rsStatusActive, rsStatusPending, rsStatusTerminating:
-			time.Sleep(waitDelay)
-		case rsStatusSucceeded:
-			return true, nil
-		case rsStatusFailed:
-			return false, nil
-		default:
-			return false, stacktrace.Propagate(ErrUnknownStatus{name, "pod", status}, "unknown status")
-		}
+func (r *Resource) getFirstContainerName(kind, name string) (containerName string, err error) {
+	kind = strings.ToLower(kind)
+	switch kind {
+	case "pod":
+		return r.getFirstContainerNameFromPod(name)
+	default:
+		return "", stacktrace.Propagate(ErrUnsupportedKind{kind}, "unsupported kind")
 	}
 }
 
-func (r *Resource) waitForJob(name string) (success bool, err error) {
-	return false, nil
+func (r *Resource) getFirstContainerNameFromPod(name string) (containerName string, err error) {
+	args := r.context.completeArgs([]string{"get", "pod", name, "-o", "jsonpath={.spec.containers[0].name}"})
+	cmdResult, err := utils.NewCommand("kubectl", args...).Run()
+	if err != nil {
+		return "", err
+	}
+	if cmdResult.ExitCode != 0 {
+		errOutput, _ := ioutil.ReadAll(cmdResult.Stderr)
+		return "", stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, string(errOutput)}, "error execute command")
+	}
+	output, err := ioutil.ReadAll(cmdResult.Stdout)
+	if err != nil {
+		return "", stacktrace.Propagate(err, "cannot read stdout")
+	}
+	return strings.TrimSpace(string(output)), nil
 }
 
 type podResourceInfo struct {

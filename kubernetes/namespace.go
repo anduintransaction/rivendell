@@ -16,14 +16,14 @@ func (n *Namespace) Create() (exists bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	if status == rsStatusUnknown {
+	if status == RsStatusUnknown {
 		return false, stacktrace.Propagate(ErrUnknownStatus{n.context.namespace, "namespace", status}, "unknown status")
 	}
-	if status == rsStatusActive || status == rsStatusPending {
+	if status == RsStatusActive || status == RsStatusPending {
 		exists = true
 		return
 	}
-	if status == rsStatusTerminating {
+	if status == RsStatusTerminating {
 		err = n.context.waitForNonPodTerminate(n.context.namespace, "namespace")
 		if err != nil {
 			return false, err
@@ -48,9 +48,9 @@ func (n *Namespace) Exists() (bool, error) {
 		return false, err
 	}
 	switch status {
-	case rsStatusActive:
+	case RsStatusActive:
 		return true, nil
-	case rsStatusUnknown:
+	case RsStatusUnknown:
 		return false, stacktrace.Propagate(ErrUnknownStatus{n.context.namespace, "namespace", status}, "unknown status")
 	default:
 		return false, nil
@@ -63,11 +63,11 @@ func (n *Namespace) Delete() (exists bool, err error) {
 	if err != nil {
 		return false, err
 	}
-	if status == rsStatusNotExist {
+	if status == RsStatusNotExist {
 		exists = false
 		return
 	}
-	if status == rsStatusTerminating {
+	if status == RsStatusTerminating {
 		err = n.context.waitForNonPodTerminate(n.context.namespace, "namespace")
 		if err != nil {
 			return false, err
@@ -87,6 +87,6 @@ func (n *Namespace) Delete() (exists bool, err error) {
 	return
 }
 
-func (n *Namespace) getStatus() (rsStatus, error) {
+func (n *Namespace) getStatus() (RsStatus, error) {
 	return n.context.getNonPodStatus(n.context.namespace, "namespace")
 }

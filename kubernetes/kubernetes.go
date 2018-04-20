@@ -65,7 +65,7 @@ func (c *Context) completeArgs(args []string) []string {
 	return c.completeArgsWithoutNamespace(args)
 }
 
-func (c *Context) getNonPodStatus(name, kind string) (rsStatus, error) {
+func (c *Context) getNonPodStatus(name, kind string) (RsStatus, error) {
 	var args []string
 	if kind == "namespace" {
 		args = c.completeArgsWithoutNamespace([]string{"get", kind, name, "-o", "yaml"})
@@ -74,33 +74,33 @@ func (c *Context) getNonPodStatus(name, kind string) (rsStatus, error) {
 	}
 	cmdResult, err := utils.NewCommand("kubectl", args...).Run()
 	if err != nil {
-		return rsStatusUnknown, err
+		return RsStatusUnknown, err
 	}
 	if cmdResult.ExitCode != 0 {
 		output, _ := ioutil.ReadAll(cmdResult.Stderr)
 		errOutput := string(output)
 		if strings.Contains(errOutput, "(NotFound)") {
-			return rsStatusNotExist, nil
+			return RsStatusNotExist, nil
 		}
-		return rsStatusUnknown, stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, errOutput}, "error execute command")
+		return RsStatusUnknown, stacktrace.Propagate(ErrCommandExecute{cmdResult.ExitCode, errOutput}, "error execute command")
 	}
 	output, _ := ioutil.ReadAll(cmdResult.Stdout)
 	rsInfo := &kubernetesResourceInfo{}
 	err = yaml.Unmarshal(output, rsInfo)
 	if err != nil {
-		return rsStatusUnknown, stacktrace.Propagate(ErrInvalidResponse{err, string(output)}, "invalid response")
+		return RsStatusUnknown, stacktrace.Propagate(ErrInvalidResponse{err, string(output)}, "invalid response")
 	}
 	if rsInfo.Status == nil {
 		// static resources like configmaps
-		return rsStatusActive, nil
+		return RsStatusActive, nil
 	}
 	switch rsInfo.Status.Phase {
 	case "Active", "":
-		return rsStatusActive, nil
+		return RsStatusActive, nil
 	case "Terminating":
-		return rsStatusTerminating, nil
+		return RsStatusTerminating, nil
 	default:
-		return rsStatusUnknown, nil
+		return RsStatusUnknown, nil
 	}
 }
 
@@ -112,13 +112,13 @@ func (c *Context) waitForNonPodTerminate(name, kind string) error {
 			return err
 		}
 		switch status {
-		case rsStatusTerminating:
+		case RsStatusTerminating:
 			time.Sleep(defaultTerminateInterval)
 			check++
 			if check > defaultTerminateCheckLimit {
 				return stacktrace.Propagate(ErrTimeout{}, "timeout waiting for terminating %s %q", kind, name)
 			}
-		case rsStatusUnknown:
+		case RsStatusUnknown:
 			return stacktrace.Propagate(ErrUnknownStatus{name, kind, status}, "unknown status")
 		default:
 			return nil
@@ -134,14 +134,37 @@ type kubernetesResourceStatus struct {
 	Phase string `yaml:"phase"`
 }
 
-type rsStatus int
+// RsStatus .
+type RsStatus int
 
+func (status RsStatus) String() string {
+	switch status {
+	case RsStatusUnknown:
+		return "Unknown"
+	case RsStatusNotExist:
+		return "NotExist"
+	case RsStatusPending:
+		return "Pending"
+	case RsStatusActive:
+		return "Active"
+	case RsStatusTerminating:
+		return "Terminating"
+	case RsStatusSucceeded:
+		return "Succeeded"
+	case RsStatusFailed:
+		return "Failed"
+	default:
+		return ""
+	}
+}
+
+// Status code
 const (
-	rsStatusUnknown rsStatus = iota
-	rsStatusNotExist
-	rsStatusPending
-	rsStatusActive
-	rsStatusTerminating
-	rsStatusSucceeded
-	rsStatusFailed
+	RsStatusUnknown RsStatus = iota
+	RsStatusNotExist
+	RsStatusPending
+	RsStatusActive
+	RsStatusTerminating
+	RsStatusSucceeded
+	RsStatusFailed
 )

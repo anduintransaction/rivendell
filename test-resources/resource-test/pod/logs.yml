@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: logs
+spec:
+  restartPolicy: Never
+  containers:
+    - name: logs
+      image: ubuntu:16.04
+      args:
+        - sh
+        - -c
+        - sleep 10; echo test
