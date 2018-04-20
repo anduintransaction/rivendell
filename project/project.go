@@ -179,6 +179,7 @@ func (p *Project) resolveVariables(variablesFromCommand map[string]string, varia
 		"rivendellVarNamespace":  p.namespace,
 		"rivendellVarContext":    p.context,
 		"rivendellVarKubeConfig": p.kubeConfig,
+		"rivendellVarRootDir":    p.rootDir,
 	}
 	variablesFromFiles := make(map[string]string)
 	var err error
