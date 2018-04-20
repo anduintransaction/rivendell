@@ -32,6 +32,7 @@ var namespace string
 var context string
 var kubeConfig string
 var variableArray = []string{}
+var variableFiles = []string{}
 var variableMap = map[string]string{}
 var includeResources []string
 var excludeResources []string
@@ -68,6 +69,7 @@ func init() {
 	RootCmd.PersistentFlags().StringVarP(&context, "context", "c", "", "set kubernetes context")
 	RootCmd.PersistentFlags().StringVar(&kubeConfig, "kubeconfig", "", "set kubectl config file")
 	RootCmd.PersistentFlags().StringArrayVar(&variableArray, "variable", []string{}, "variables to pass to rivendell task file, for example: --variable key1=value1 --variable key2=value2")
+	RootCmd.PersistentFlags().StringArrayVar(&variableFiles, "variableFile", []string{}, "variable files, for example: --variableFile=path/to/file1 --variableFile=path/to/file2")
 	RootCmd.PersistentFlags().BoolVarP(&yes, "yes", "y", false, "Run command immediately")
 	RootCmd.PersistentFlags().StringArrayVar(&includeResources, "include", []string{}, "include file patterns, for example --include=**/service.yml --include=**/deployment.yml")
 	RootCmd.PersistentFlags().StringArrayVar(&includeResources, "exclude", []string{}, "exclude file patterns, for example --exclude=**/config.yml --exclude=**/secret.yml")

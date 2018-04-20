@@ -7,6 +7,7 @@ import (
 
 	"github.com/anduintransaction/rivendell/kubernetes"
 	"github.com/anduintransaction/rivendell/utils"
+	"github.com/joho/godotenv"
 	"github.com/palantir/stacktrace"
 )
 
@@ -26,7 +27,7 @@ type Project struct {
 }
 
 // ReadProject reads a project from file
-func ReadProject(projectFile, namespace, context, kubeConfig string, variables map[string]string, includeResources []string, excludeResources []string) (*Project, error) {
+func ReadProject(projectFile, namespace, context, kubeConfig string, variables map[string]string, variableFiles []string, includeResources []string, excludeResources []string) (*Project, error) {
 	projectConfig, err := ReadProjectConfig(projectFile, variables)
 	if err != nil {
 		return nil, err
@@ -37,7 +38,7 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 	}
 	project.resolveProjectRoot(projectFile, projectConfig.RootDir)
 	project.resolveNamespace(namespace, projectConfig.Namespace)
-	project.resolveVariables(variables, projectConfig.Variables)
+	err = project.resolveVariables(variables, variableFiles, projectConfig.Variables)
 	if err != nil {
 		return nil, err
 	}
@@ -173,13 +174,22 @@ func (p *Project) resolveNamespace(namespaceFromCommand, namespaceFromConfig str
 	}
 }
 
-func (p *Project) resolveVariables(variablesFromCommand, variablesFromConfig map[string]string) {
+func (p *Project) resolveVariables(variablesFromCommand map[string]string, variableFiles []string, variablesFromConfig map[string]string) error {
 	rivendellVariables := map[string]string{
 		"rivendellVarNamespace":  p.namespace,
 		"rivendellVarContext":    p.context,
 		"rivendellVarKubeConfig": p.kubeConfig,
 	}
-	p.variables = utils.MergeMaps(variablesFromConfig, variablesFromCommand, rivendellVariables)
+	variablesFromFiles := make(map[string]string)
+	var err error
+	if len(variableFiles) > 0 {
+		variablesFromFiles, err = godotenv.Read(variableFiles...)
+		if err != nil {
+			return stacktrace.Propagate(err, "cannot read variable files")
+		}
+	}
+	p.variables = utils.MergeMaps(variablesFromConfig, variablesFromFiles, variablesFromCommand, rivendellVariables)
+	return nil
 }
 
 func (p *Project) resolveResourceGraph(resourceGroupConfigs []*ResourceGroupConfig, includeResources []string, excludeResources []string) error {

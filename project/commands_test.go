@@ -34,7 +34,8 @@ func (s *CommandTestSuite) TestUpAndDown() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = project.Up()
 	require.Nil(s.T(), err)
@@ -64,12 +65,13 @@ func (s *CommandTestSuite) TestUpdate() {
 	variables := map[string]string{
 		"tag": "1.13.12",
 	}
-	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = project.Up()
 	require.Nil(s.T(), err)
 	variables["tag"] = "1.13"
-	updatedProject, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	updatedProject, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = updatedProject.Update()
 	require.Nil(s.T(), err)
@@ -90,7 +92,8 @@ func (s *CommandTestSuite) TestUpgrade() {
 		"nginxTag":  "1.13.12",
 		"ubuntuTag": "16.04",
 	}
-	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = project.Up()
 	require.Nil(s.T(), err)
@@ -98,7 +101,7 @@ func (s *CommandTestSuite) TestUpgrade() {
 	require.Nil(s.T(), err)
 	variables["nginxTag"] = "1.13"
 	variables["ubuntuTag"] = "16.10"
-	updatedProject, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	updatedProject, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = updatedProject.Upgrade()
 	require.Nil(s.T(), err)
@@ -118,7 +121,8 @@ func (s *CommandTestSuite) TestWaitPod() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.Nil(s.T(), err)
@@ -148,7 +152,8 @@ func (s *CommandTestSuite) TestWaitJob() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.Nil(s.T(), err)
@@ -189,7 +194,8 @@ func (s *CommandTestSuite) TestJobWaitTimeoutInProject() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.NotNil(s.T(), err)
@@ -209,7 +215,8 @@ func (s *CommandTestSuite) TestJobWaitFailedInProject() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.NotNil(s.T(), err)
@@ -229,7 +236,8 @@ func (s *CommandTestSuite) TestPodWaitTimeoutInProject() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.NotNil(s.T(), err)
@@ -249,7 +257,8 @@ func (s *CommandTestSuite) TestPodWaitFailedInProject() {
 	context := ""
 	kubeConfig := ""
 	variables := make(map[string]string)
-	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{}
+	p, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err)
 	err = p.Up()
 	require.NotNil(s.T(), err)

@@ -35,7 +35,7 @@ Unlike update command, non-existed resources will be created.
 `,
 	Args: cobra.MinimumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		p, err := project.ReadProject(args[0], namespace, context, kubeConfig, variableMap, includeResources, excludeResources)
+		p, err := project.ReadProject(args[0], namespace, context, kubeConfig, variableMap, variableFiles, includeResources, excludeResources)
 		if err != nil {
 			utils.Fatal(err)
 		}

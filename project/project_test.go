@@ -31,13 +31,18 @@ func (s *ProjectTestSuite) TestReadProject() {
 		"postgresImageTag": "9.6",
 		"appTag":           "1.1.4",
 	}
-	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, nil, nil)
+	variableFiles := []string{
+		filepath.Join(projectDir, "vars", "vars"),
+	}
+	project, err := ReadProject(projectFile, namespace, context, kubeConfig, variables, variableFiles, nil, nil)
 	require.Nil(s.T(), err, "should read project file successfully")
 	require.Equal(s.T(), projectDir, project.rootDir)
 	require.Equal(s.T(), namespace, project.namespace)
 	require.Equal(s.T(), context, project.context)
 	require.Equal(s.T(), kubeConfig, project.kubeConfig)
 	expectedVariables := map[string]string{
+		"key1":                   "value1",
+		"key2":                   "value2",
 		"postgresTag":            "9.6",
 		"postgresImageTag":       "9.6",
 		"redisTag":               "4-alpine",
@@ -232,7 +237,8 @@ func (s *ProjectTestSuite) TestGlob() {
 	projectFile := filepath.Join(projectDir, "project.yml")
 	includes := []string{"**/*.yml"}
 	excludes := []string{"**/mango.yml"}
-	project, err := ReadProject(projectFile, "dota", "", "", nil, includes, excludes)
+	variableFiles := []string{}
+	project, err := ReadProject(projectFile, "dota", "", "", nil, variableFiles, includes, excludes)
 	require.Nil(s.T(), err)
 	actualFiles := []string{}
 	project.resourceGraph.WalkForward(func(g *ResourceGroup) error {
