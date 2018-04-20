@@ -52,6 +52,7 @@ func (s *ProjectTestSuite) TestReadProject() {
 		"rivendellVarNamespace":  namespace,
 		"rivendellVarContext":    context,
 		"rivendellVarKubeConfig": kubeConfig,
+		"rivendellVarRootDir":    project.rootDir,
 	}
 	require.Equal(s.T(), expectedVariables, project.variables)
 	expectedResourceGraph := &ResourceGraph{
