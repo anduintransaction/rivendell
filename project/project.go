@@ -18,12 +18,13 @@ const (
 
 // Project holds configuration for a rivendell task
 type Project struct {
-	rootDir       string
-	namespace     string
-	context       string
-	kubeConfig    string
-	variables     map[string]string
-	resourceGraph *ResourceGraph
+	rootDir               string
+	namespace             string
+	context               string
+	kubeConfig            string
+	variables             map[string]string
+	resourceGraph         *ResourceGraph
+	deleteNamespaceConfig bool
 }
 
 // ReadProject reads a project from file
@@ -33,8 +34,9 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 		return nil, err
 	}
 	project := &Project{
-		context:    context,
-		kubeConfig: kubeConfig,
+		context:               context,
+		kubeConfig:            kubeConfig,
+		deleteNamespaceConfig: projectConfig.DeleteNamespace,
 	}
 	project.resolveProjectRoot(projectFile, projectConfig.RootDir)
 	project.resolveNamespace(namespace, projectConfig.Namespace)
@@ -216,7 +218,7 @@ func (p *Project) createNamespace(kubeContext *kubernetes.Context) error {
 }
 
 func (p *Project) deleteNamespace(kubeContext *kubernetes.Context) error {
-	if p.namespace == "" {
+	if p.namespace == "" || p.namespace == "default" || !p.deleteNamespaceConfig {
 		return nil
 	}
 	utils.Warn("Deleting namespace %q", p.namespace)
