@@ -1,9 +1,6 @@
 package utils
 
 import (
-	"bytes"
-	"html/template"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,7 +12,7 @@ import (
 )
 
 // Version of rivendell
-var Version = "1.0.3"
+var Version = "1.0.4"
 
 // MergeMaps merges multiple maps into one
 func MergeMaps(maps ...map[string]string) map[string]string {
@@ -26,26 +23,6 @@ func MergeMaps(maps ...map[string]string) map[string]string {
 		}
 	}
 	return finalMap
-}
-
-// ExecuteTemplate .
-func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, error) {
-	content, err := ioutil.ReadFile(templateFile)
-	if err != nil {
-		return nil, stacktrace.Propagate(err, "cannot read template file %q", templateFile)
-	}
-	contentWithEnvExpand := ExpandEnv(string(content))
-	tmpl, err := template.New("rivendell").Parse(contentWithEnvExpand)
-	if err != nil {
-		return nil, stacktrace.Propagate(err, "cannot parse template file %q", templateFile)
-	}
-	tmpl = tmpl.Option("missingkey=error")
-	b := &bytes.Buffer{}
-	err = tmpl.Execute(b, variables)
-	if err != nil {
-		return nil, stacktrace.Propagate(err, "cannot execute template file %q", templateFile)
-	}
-	return b.Bytes(), nil
 }
 
 // GlobFiles returns list of files based on inclusion and exclusion pattern

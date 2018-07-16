@@ -29,21 +29,22 @@ type Project struct {
 
 // ReadProject reads a project from file
 func ReadProject(projectFile, namespace, context, kubeConfig string, variables map[string]string, variableFiles []string, includeResources []string, excludeResources []string) (*Project, error) {
-	projectConfig, err := ReadProjectConfig(projectFile, variables)
+	project := &Project{
+		context:    context,
+		kubeConfig: kubeConfig,
+	}
+	err := project.resolveCommandlineVariables(variables, variableFiles)
 	if err != nil {
 		return nil, err
 	}
-	project := &Project{
-		context:               context,
-		kubeConfig:            kubeConfig,
-		deleteNamespaceConfig: projectConfig.DeleteNamespace,
+	projectConfig, err := ReadProjectConfig(projectFile, project.variables)
+	if err != nil {
+		return nil, err
 	}
+	project.deleteNamespaceConfig = projectConfig.DeleteNamespace
 	project.resolveProjectRoot(projectFile, projectConfig.RootDir)
 	project.resolveNamespace(namespace, projectConfig.Namespace)
-	err = project.resolveVariables(variables, variableFiles, projectConfig.Variables)
-	if err != nil {
-		return nil, err
-	}
+	project.resolveVariables(projectConfig.Variables)
 	err = project.resolveResourceGraph(projectConfig.ResourceGroups, includeResources, excludeResources)
 	if err != nil {
 		return nil, err
@@ -176,13 +177,7 @@ func (p *Project) resolveNamespace(namespaceFromCommand, namespaceFromConfig str
 	}
 }
 
-func (p *Project) resolveVariables(variablesFromCommand map[string]string, variableFiles []string, variablesFromConfig map[string]string) error {
-	rivendellVariables := map[string]string{
-		"rivendellVarNamespace":  p.namespace,
-		"rivendellVarContext":    p.context,
-		"rivendellVarKubeConfig": p.kubeConfig,
-		"rivendellVarRootDir":    p.rootDir,
-	}
+func (p *Project) resolveCommandlineVariables(variablesFromCommand map[string]string, variableFiles []string) error {
 	variablesFromFiles := make(map[string]string)
 	var err error
 	if len(variableFiles) > 0 {
@@ -191,8 +186,18 @@ func (p *Project) resolveVariables(variablesFromCommand map[string]string, varia
 			return stacktrace.Propagate(err, "cannot read variable files")
 		}
 	}
-	p.variables = utils.MergeMaps(variablesFromConfig, variablesFromFiles, variablesFromCommand, rivendellVariables)
+	p.variables = utils.MergeMaps(variablesFromFiles, variablesFromCommand)
 	return nil
+}
+
+func (p *Project) resolveVariables(variablesFromConfig map[string]string) {
+	rivendellVariables := map[string]string{
+		"rivendellVarNamespace":  p.namespace,
+		"rivendellVarContext":    p.context,
+		"rivendellVarKubeConfig": p.kubeConfig,
+		"rivendellVarRootDir":    p.rootDir,
+	}
+	p.variables = utils.MergeMaps(variablesFromConfig, p.variables, rivendellVariables)
 }
 
 func (p *Project) resolveResourceGraph(resourceGroupConfigs []*ResourceGroupConfig, includeResources []string, excludeResources []string) error {
