@@ -95,7 +95,7 @@ func (c *Context) getNonPodStatus(name, kind string) (RsStatus, error) {
 		return RsStatusActive, nil
 	}
 	switch rsInfo.Status.Phase {
-	case "Active", "":
+	case "Active", "", "Bound":
 		return RsStatusActive, nil
 	case "Terminating":
 		return RsStatusTerminating, nil

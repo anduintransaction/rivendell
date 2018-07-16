@@ -15,7 +15,7 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 		return nil, stacktrace.Propagate(err, "cannot read template file %q", templateFile)
 	}
 	contentWithEnvExpand := ExpandEnv(string(content))
-	tmpl, err := template.New("rivendell").Parse(contentWithEnvExpand)
+	tmpl, err := template.New(templateFile).Parse(contentWithEnvExpand)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "cannot parse template file %q", templateFile)
 	}
