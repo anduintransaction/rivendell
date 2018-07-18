@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type CommonTestSuite struct {
@@ -45,6 +46,77 @@ func (s *CommonTestSuite) TestReplaceEnv() {
 	os.Setenv("RIVENDELL_USER", "rivendell")
 	expected := "rivendell $RIVENDELL_USER ${RIVENDELL_USER} "
 	require.Equal(s.T(), expected, ExpandEnv(str))
+}
+
+func (s *CommonTestSuite) TestStringStack() {
+	stack := NewStringStack()
+	_, err := stack.Pop()
+	require.Equal(s.T(), ErrEmptyStack, err)
+	_, err = stack.Head()
+	require.Equal(s.T(), ErrEmptyStack, err)
+	stack.Push("1")
+	stack.Push("2")
+	value, err := stack.Head()
+	require.Equal(s.T(), "2", value)
+	require.Nil(s.T(), err)
+	value, err = stack.Pop()
+	require.Equal(s.T(), "2", value)
+	require.Nil(s.T(), err)
+	value, err = stack.Pop()
+	require.Equal(s.T(), "1", value)
+	require.Nil(s.T(), err)
+	_, err = stack.Pop()
+	require.Equal(s.T(), ErrEmptyStack, err)
+	_, err = stack.Head()
+	require.Equal(s.T(), ErrEmptyStack, err)
+}
+
+func (s *CommonTestSuite) TestTemplater() {
+	variables := map[string]string{
+		"value1": "value1",
+		"value2": "value2",
+		"value3": "value3",
+	}
+	templateFile := filepath.Join(s.resourceRoot, "utils-test", "templater", "parent.yml")
+	content, err := ExecuteTemplate(templateFile, variables)
+	require.Nil(s.T(), err)
+	parsedYAML := &struct {
+		Key1 string `yaml:"key1"`
+		Sub  *struct {
+			Key2 string `yaml:"key2"`
+			Sub  *struct {
+				Key3 string `yaml:"key3"`
+			} `yaml:"sub"`
+		} `yaml:"sub"`
+	}{}
+	expectedYAML := &struct {
+		Key1 string `yaml:"key1"`
+		Sub  *struct {
+			Key2 string `yaml:"key2"`
+			Sub  *struct {
+				Key3 string `yaml:"key3"`
+			} `yaml:"sub"`
+		} `yaml:"sub"`
+	}{
+		Key1: "value1",
+		Sub: &struct {
+			Key2 string `yaml:"key2"`
+			Sub  *struct {
+				Key3 string `yaml:"key3"`
+			} `yaml:"sub"`
+		}{
+			Key2: "value2",
+			Sub: &struct {
+				Key3 string `yaml:"key3"`
+			}{
+				Key3: "value3",
+			},
+		},
+	}
+
+	err = yaml.Unmarshal(content, parsedYAML)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), expectedYAML, parsedYAML)
 }
 
 func TestCommon(t *testing.T) {

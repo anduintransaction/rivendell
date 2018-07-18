@@ -325,7 +325,7 @@ func (rg *ResourceGraph) splitResourceFile(resourceFile *ResourceFile) error {
 		parsedResource := &resourceYAML{}
 		err := yaml.Unmarshal([]byte(part), parsedResource)
 		if err != nil {
-			return stacktrace.Propagate(err, "Cannot parse yaml file %s`", resourceFile.FilePath)
+			return stacktrace.Propagate(err, "Cannot parse yaml file %q. Content: %s", resourceFile.FilePath, part)
 		}
 		resource := &Resource{
 			Name:       parsedResource.Metadata.Name,
