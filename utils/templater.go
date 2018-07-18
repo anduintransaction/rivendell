@@ -2,8 +2,8 @@ package utils
 
 import (
 	"bytes"
-	"html/template"
 	"io/ioutil"
+	"text/template"
 
 	"github.com/palantir/stacktrace"
 )
