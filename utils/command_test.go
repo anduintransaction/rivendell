@@ -2,7 +2,6 @@ package utils
 
 import (
 	"io/ioutil"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,13 +22,10 @@ func (s *CommandTestSuite) TestCommandSuccess() {
 }
 
 func (s *CommandTestSuite) TestCommandExitCode() {
-	cmd := NewCommand("ls", "should-not-exist.txt")
+	cmd := NewCommand("bash", "-c", "exit 1")
 	status, err := cmd.Run()
 	require.Nil(s.T(), err, "command should run successfully")
 	require.Equal(s.T(), 1, status.ExitCode)
-	output, _ := ioutil.ReadAll(status.Stderr)
-	require.True(s.T(), strings.Contains(string(output), "ls"), "stderr should contain ls")
-	require.True(s.T(), strings.Contains(string(output), "should-not-exist.txt"), "stderr should contain file name")
 }
 
 func (s *CommandTestSuite) TestCommandFailure() {

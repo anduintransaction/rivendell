@@ -116,7 +116,9 @@ func (p *Project) Update() error {
 	}
 	return p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
 		return p.updateResource(kubeContext, g, r)
-	}, nil, nil)
+	}, nil, func(name, kind string) error {
+		return p.waitForResource(kubeContext, name, kind)
+	})
 }
 
 // Upgrade .
@@ -127,7 +129,9 @@ func (p *Project) Upgrade() error {
 	}
 	return p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
 		return p.upgradeResource(kubeContext, g, r)
-	}, nil, nil)
+	}, nil, func(name, kind string) error {
+		return p.waitForResource(kubeContext, name, kind)
+	})
 }
 
 // PrintCommonInfo .
