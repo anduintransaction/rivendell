@@ -1,6 +1,14 @@
 root_dir: .
 resource_groups:
-  - name: group1
+  - name: pod
     resources:
-      - services/*.yml
+      - services/pod1.yml
+  - name: nginx
+    resources:
+      - services/nginx.yml
+    depend:
+      - pod
+    wait:
+      - kind: pod
+        name: pod1
 delete_namespace: true

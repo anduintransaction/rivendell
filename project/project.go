@@ -3,6 +3,7 @@ package project
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anduintransaction/rivendell/kubernetes"
@@ -85,6 +86,7 @@ func (p *Project) Up() error {
 	}, func(r *Resource, g *ResourceGroup) error {
 		return p.waitForExists(kubeContext, r)
 	}, func(name, kind string) error {
+		utils.Info2("Waiting for %s %q", kind, name)
 		return p.waitForResource(kubeContext, name, kind)
 	})
 }
@@ -117,6 +119,7 @@ func (p *Project) Update() error {
 	return p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
 		return p.updateResource(kubeContext, g, r)
 	}, nil, func(name, kind string) error {
+		utils.Info2("Waiting for %s %q", kind, name)
 		return p.waitForResource(kubeContext, name, kind)
 	})
 }
@@ -130,8 +133,46 @@ func (p *Project) Upgrade() error {
 	return p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
 		return p.upgradeResource(kubeContext, g, r)
 	}, nil, func(name, kind string) error {
+		utils.Info2("Waiting for %s %q", kind, name)
 		return p.waitForResource(kubeContext, name, kind)
 	})
+}
+
+// GetServicePods
+func (p *Project) GetServicePods() ([]string, error) {
+	kubeContext, err := kubernetes.NewContext(p.namespace, p.context, p.kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+	pods := utils.NewStringSet()
+	err = p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
+		if strings.ToLower(r.Kind) == "service" {
+			servicePods, err := kubeContext.Service().ListPods(r.Name)
+			if err != nil {
+				return err
+			}
+			pods.Add(servicePods...)
+		}
+		return nil
+	}, nil, nil)
+	return pods.ToSlice(), nil
+}
+
+// Restart .
+func (p *Project) Restart(pods []string) error {
+	kubeContext, err := kubernetes.NewContext(p.namespace, p.context, p.kubeConfig)
+	if err != nil {
+		return err
+	}
+	for _, pod := range pods {
+		utils.Warn("Deleting pod %q", pod)
+		exists, err := kubeContext.Resource().Delete(pod, "pod")
+		if err != nil {
+			return err
+		}
+		p.printDeleteResult(exists)
+	}
+	return nil
 }
 
 // PrintCommonInfo .
@@ -166,6 +207,14 @@ func (p *Project) PrintUpdatePlan() {
 		fmt.Printf(" - %s %q\n", r.Kind, r.Name)
 		return nil
 	}, nil, nil)
+}
+
+// PrintRestartPlan .
+func (p *Project) PrintRestartPlan(pods []string) {
+	utils.Warn("The following pods will be restarted: ")
+	for _, pod := range pods {
+		fmt.Printf(" - %s\n", pod)
+	}
 }
 
 func (p *Project) resolveProjectRoot(projectFile, configRoot string) {

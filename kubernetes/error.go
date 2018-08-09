@@ -50,7 +50,7 @@ type ErrUnknownStatus struct {
 }
 
 func (err ErrUnknownStatus) Error() string {
-	return fmt.Sprintf("unknown status for %s %q (%d)", err.Kind, err.Name, err.status)
+	return fmt.Sprintf("unknown status for %s %q (%s)", err.Kind, err.Name, err.status)
 }
 
 // ErrTimeout .

@@ -37,6 +37,11 @@ func (c *Context) Resource() *Resource {
 	return &Resource{c}
 }
 
+// Service .
+func (c *Context) Service() *Service {
+	return &Service{c}
+}
+
 func (c *Context) checkDeps() error {
 	status, err := utils.ExecuteCommandSilently("which", "kubectl")
 	if err != nil {

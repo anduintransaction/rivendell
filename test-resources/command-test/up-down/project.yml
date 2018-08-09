@@ -3,9 +3,14 @@ resource_groups:
   - name: configs
     resources:
       - configs/*.yml
-  - name: services
+  - name: redis
     resources:
-      - services/*.yml
+      - services/redis.yml
     depend:
       - configs
+  - name: nginx
+    resources:
+      - services/nginx.yml
+    depend:
+      - redis
 delete_namespace: true
