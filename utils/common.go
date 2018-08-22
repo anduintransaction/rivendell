@@ -12,7 +12,7 @@ import (
 )
 
 // Version of rivendell
-var Version = "1.0.8"
+var Version = "1.0.9"
 
 // MergeMaps merges multiple maps into one
 func MergeMaps(maps ...map[string]string) map[string]string {
