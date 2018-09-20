@@ -1,3 +1,4 @@
 key2: '{{.value2}}'
 sub:
 {{import "child2.yml" . | indent 2}}
+  team: {{loadFile "files/test-file.txt" | trim}}

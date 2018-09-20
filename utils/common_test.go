@@ -86,7 +86,9 @@ func (s *CommonTestSuite) TestTemplater() {
 			Key2 string `yaml:"key2"`
 			Sub  *struct {
 				Key3 string `yaml:"key3"`
+				Team string `yaml:"team"`
 			} `yaml:"sub"`
+			Team string `yaml:"team"`
 		} `yaml:"sub"`
 	}{}
 	expectedYAML := &struct {
@@ -95,7 +97,9 @@ func (s *CommonTestSuite) TestTemplater() {
 			Key2 string `yaml:"key2"`
 			Sub  *struct {
 				Key3 string `yaml:"key3"`
+				Team string `yaml:"team"`
 			} `yaml:"sub"`
+			Team string `yaml:"team"`
 		} `yaml:"sub"`
 	}{
 		Key1: "value1",
@@ -103,14 +107,19 @@ func (s *CommonTestSuite) TestTemplater() {
 			Key2 string `yaml:"key2"`
 			Sub  *struct {
 				Key3 string `yaml:"key3"`
+				Team string `yaml:"team"`
 			} `yaml:"sub"`
+			Team string `yaml:"team"`
 		}{
 			Key2: "value2",
 			Sub: &struct {
 				Key3 string `yaml:"key3"`
+				Team string `yaml:"team"`
 			}{
 				Key3: "value3",
+				Team: "MINESKI",
 			},
+			Team: "FNATIC",
 		},
 	}
 

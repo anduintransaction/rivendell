@@ -23,8 +23,10 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 	cwdStack.Push(currentFolder)
 	contentWithEnvExpand := ExpandEnv(string(content))
 	tmpl, err := template.New(templateFile).Funcs(map[string]interface{}{
-		"import": importFunc,
-		"indent": indentFunc,
+		"import":   importFunc,
+		"indent":   indentFunc,
+		"loadFile": loadFileFunc,
+		"trim":     trimFunc,
 	}).Parse(contentWithEnvExpand)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "cannot parse template file %q", templateFile)
@@ -40,15 +42,9 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 }
 
 func importFunc(templateFile string, variables map[string]string) (string, error) {
-	var realPath string
-	if strings.HasPrefix(templateFile, "/") {
-		realPath = templateFile
-	} else {
-		currentFolder, err := cwdStack.Head()
-		if err != nil {
-			return "", err
-		}
-		realPath = filepath.Join(currentFolder, templateFile)
+	realPath, err := resolveRealpath(templateFile)
+	if err != nil {
+		return "", err
 	}
 	content, err := ExecuteTemplate(realPath, variables)
 	return string(content), err
@@ -62,4 +58,34 @@ func indentFunc(indent int, content string) string {
 		result += indentStr + scanner.Text() + "\n"
 	}
 	return result
+}
+
+func loadFileFunc(filename string) (string, error) {
+	realPath, err := resolveRealpath(filename)
+	if err != nil {
+		return "", err
+	}
+	content, err := ioutil.ReadFile(realPath)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
+}
+
+func resolveRealpath(filename string) (string, error) {
+	var realPath string
+	if strings.HasPrefix(filename, "/") {
+		realPath = filename
+	} else {
+		currentFolder, err := cwdStack.Head()
+		if err != nil {
+			return "", err
+		}
+		realPath = filepath.Join(currentFolder, filename)
+	}
+	return realPath, nil
+}
+
+func trimFunc(content string) string {
+	return strings.TrimSpace(content)
 }
