@@ -308,7 +308,7 @@ func (rg *ResourceGraph) removeNamespace(content string) string {
 	strippedContent := ""
 	for scanner.Scan() {
 		line := scanner.Text()
-		if !strings.HasPrefix(strings.TrimSpace(line), "namespace:") {
+		if !strings.HasPrefix(line, "  namespace:") {
 			strippedContent += line + "\n"
 		}
 	}
