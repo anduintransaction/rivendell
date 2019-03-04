@@ -72,5 +72,5 @@ func init() {
 	RootCmd.PersistentFlags().StringArrayVar(&variableFiles, "variableFile", []string{}, "variable files, for example: --variableFile=path/to/file1 --variableFile=path/to/file2")
 	RootCmd.PersistentFlags().BoolVarP(&yes, "yes", "y", false, "Run command immediately")
 	RootCmd.PersistentFlags().StringArrayVar(&includeResources, "include", []string{}, "include file patterns, for example --include=**/service.yml --include=**/deployment.yml")
-	RootCmd.PersistentFlags().StringArrayVar(&includeResources, "exclude", []string{}, "exclude file patterns, for example --exclude=**/config.yml --exclude=**/secret.yml")
+	RootCmd.PersistentFlags().StringArrayVar(&excludeResources, "exclude", []string{}, "exclude file patterns, for example --exclude=**/config.yml --exclude=**/secret.yml")
 }
