@@ -3,6 +3,8 @@ package utils
 import (
 	"bufio"
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -27,6 +29,7 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 		"indent":   indentFunc,
 		"loadFile": loadFileFunc,
 		"trim":     trimFunc,
+		"hash":     hashFunc,
 	}).Parse(contentWithEnvExpand)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "cannot parse template file %q", templateFile)
@@ -88,4 +91,16 @@ func resolveRealpath(filename string) (string, error) {
 
 func trimFunc(content string) string {
 	return strings.TrimSpace(content)
+}
+
+func hashFunc(filename string) (string, error) {
+	realPath, err := resolveRealpath(filename)
+	if err != nil {
+		return "", err
+	}
+	content, err := ioutil.ReadFile(realPath)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%x", sha256.Sum256(content)), nil
 }
