@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -30,6 +31,7 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 		"loadFile": loadFileFunc,
 		"trim":     trimFunc,
 		"hash":     hashFunc,
+		"base64":   base64Func,
 	}).Parse(contentWithEnvExpand)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "cannot parse template file %q", templateFile)
@@ -103,4 +105,8 @@ func hashFunc(filename string) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%x", sha256.Sum256(content)), nil
+}
+
+func base64Func(content string) string {
+	return base64.StdEncoding.EncodeToString([]byte(content))
 }
