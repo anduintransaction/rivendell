@@ -4,6 +4,8 @@ OS_MAC=darwin
 ARCH_MAC=amd64
 OS_LINUX=linux
 ARCH_LINUX=amd64
+OS_M1=darwin
+ARCH_M1=arm64
 
 build:
 	go build
@@ -14,7 +16,7 @@ install:
 clean:
 	rm -rf ${BIN} ${DIST} ${GOPATH}/bin/${BIN}
 
-dist: clean build .dist-prepare .dist-mac .dist-linux
+dist: clean build .dist-prepare .dist-mac .dist-linux .dist-m1
 
 test: .test-project .test-utils .test-kubernetes
 
@@ -26,6 +28,13 @@ test: .test-project .test-utils .test-kubernetes
 	GOOS=${OS_MAC} GOARCH=${ARCH_MAC} go build -o ${DIST}/${BIN} && \
 	cd ${DIST} && \
 	tar czf ${BIN}-`../${BIN} version`-${OS_MAC}-${ARCH_MAC}.tar.gz ${BIN} && \
+	rm ${BIN} && \
+	cd ..
+
+.dist-m1:
+	GOOS=${OS_M1} GOARCH=${ARCH_M1} go build -o ${DIST}/${BIN} && \
+	cd ${DIST} && \
+	tar czf ${BIN}-`../${BIN} version`-${OS_M1}-${ARCH_M1}.tar.gz ${BIN} && \
 	rm ${BIN} && \
 	cd ..
 
