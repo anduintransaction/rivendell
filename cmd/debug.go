@@ -15,9 +15,17 @@
 package cmd
 
 import (
+	"strings"
+
 	"github.com/anduintransaction/rivendell/project"
+	"github.com/anduintransaction/rivendell/project/formatters"
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/spf13/cobra"
+)
+
+var (
+	outputFormat string
+	filterGroups []string
 )
 
 // debugCmd represents the debug command
@@ -31,10 +39,25 @@ var debugCmd = &cobra.Command{
 		if err != nil {
 			utils.Fatal(err)
 		}
-		p.Debug()
+
+		var formatter project.Formatter
+		switch strings.ToLower(outputFormat) {
+		case "console":
+			formatter = formatters.NewConsoleFormatter()
+		case "yaml":
+			formatter = formatters.NewYamlFormatter()
+		default:
+			utils.Warn("Unknown output formatter. Fallback to console")
+			formatter = formatters.NewConsoleFormatter()
+		}
+
+		p.Debug(formatter, filterGroups)
 	},
 }
 
 func init() {
 	RootCmd.AddCommand(debugCmd)
+
+	debugCmd.Flags().StringVarP(&outputFormat, "output", "o", "console", "print format. One of: console|yaml")
+	debugCmd.Flags().StringSliceVar(&filterGroups, "filter-groups", []string{}, "Only print resource groups")
 }
