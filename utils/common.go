@@ -12,7 +12,7 @@ import (
 )
 
 // Version of rivendell
-var Version = "1.1.0"
+var Version = "1.1.1"
 
 // MergeMaps merges multiple maps into one
 func MergeMaps(maps ...map[string]string) map[string]string {
@@ -79,4 +79,12 @@ func ExpandEnv(s string) string {
 		envName := strings.TrimPrefix(strings.TrimSuffix(found, ")"), "$(")
 		return os.Getenv(envName)
 	})
+}
+
+func StringSliceToMap(s []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, it := range s {
+		m[it] = true
+	}
+	return m
 }

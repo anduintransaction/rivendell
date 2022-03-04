@@ -17,6 +17,10 @@ const (
 	waitCount = 10
 )
 
+type Formatter interface {
+	Format(p *Project, filterGroups []string)
+}
+
 // Project holds configuration for a rivendell task
 type Project struct {
 	rootDir               string
@@ -54,21 +58,8 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 }
 
 // Debug .
-func (p *Project) Debug() {
-	p.PrintCommonInfo()
-	p.resourceGraph.WalkForward(func(g *ResourceGroup) error {
-		utils.Info("Resource group %q", g.Name)
-		for _, rf := range g.ResourceFiles {
-			utils.Info2("Resource file %q", rf.FilePath)
-			fmt.Println()
-			for _, r := range rf.Resources {
-				fmt.Println(r.RawContent)
-				fmt.Println()
-			}
-		}
-		fmt.Println()
-		return nil
-	})
+func (p *Project) Debug(f Formatter, filterGroups []string) {
+	f.Format(p, filterGroups)
 }
 
 // Up .
@@ -215,6 +206,10 @@ func (p *Project) PrintRestartPlan(pods []string) {
 	for _, pod := range pods {
 		fmt.Printf(" - %s\n", pod)
 	}
+}
+
+func (p *Project) WalkForward(fn func(g *ResourceGroup) error) error {
+	return p.resourceGraph.WalkForward(fn)
 }
 
 func (p *Project) resolveProjectRoot(projectFile, configRoot string) {
