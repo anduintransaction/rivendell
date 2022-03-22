@@ -13,14 +13,9 @@ func NewConsoleFormatter() *ConsoleFormatter {
 	return &ConsoleFormatter{}
 }
 
-func (f *ConsoleFormatter) Format(p *project.Project, filterGroups []string) {
-	m := utils.StringSliceToMap(filterGroups)
+func (f *ConsoleFormatter) Format(p *project.Project) {
 	p.PrintCommonInfo()
 	p.WalkForward(func(g *project.ResourceGroup) error {
-		if len(m) > 0 && !m[g.Name] {
-			return nil
-		}
-
 		utils.Info("Resource group %q", g.Name)
 		for _, rf := range g.ResourceFiles {
 			utils.Info2("Resource file %q", rf.FilePath)

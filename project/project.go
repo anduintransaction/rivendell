@@ -17,8 +17,11 @@ const (
 	waitCount = 10
 )
 
+// FilterFunc criteria if a resource group should be process by Walk function
+type FilterFunc func(*ResourceGroup) bool
+
 type Formatter interface {
-	Format(p *Project, filterGroups []string)
+	Format(p *Project)
 }
 
 // Project holds configuration for a rivendell task
@@ -29,6 +32,7 @@ type Project struct {
 	kubeConfig            string
 	variables             map[string]string
 	resourceGraph         *ResourceGraph
+	filterFn              FilterFunc
 	deleteNamespaceConfig bool
 }
 
@@ -58,8 +62,8 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 }
 
 // Debug .
-func (p *Project) Debug(f Formatter, filterGroups []string) {
-	f.Format(p, filterGroups)
+func (p *Project) Debug(f Formatter) {
+	f.Format(p)
 }
 
 // Up .
@@ -209,7 +213,17 @@ func (p *Project) PrintRestartPlan(pods []string) {
 }
 
 func (p *Project) WalkForward(fn func(g *ResourceGroup) error) error {
-	return p.resourceGraph.WalkForward(fn)
+	return p.resourceGraph.WalkForward(func(g *ResourceGroup) error {
+		if p.filterFn != nil && !p.filterFn(g) {
+			return nil
+		}
+		return fn(g)
+	})
+}
+
+func (p *Project) SetFilter(fn func(*ResourceGroup) bool) *Project {
+	p.filterFn = fn
+	return p
 }
 
 func (p *Project) resolveProjectRoot(projectFile, configRoot string) {
