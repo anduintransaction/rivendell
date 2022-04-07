@@ -30,12 +30,13 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 		New(templateFile).
 		Funcs(sprig.TxtFuncMap()).
 		Funcs(map[string]interface{}{
-			"import":   importFunc,
-			"indent":   indentFunc,
-			"loadFile": loadFileFunc,
-			"trim":     trimFunc,
-			"hash":     hashFunc,
-			"base64":   base64Func,
+			"import":       importFunc,
+			"indent":       indentFunc,
+			"loadFile":     loadFileFunc,
+			"trim":         trimFunc,
+			"hash":         hashFunc,
+			"base64":       base64Func,
+			"asGenericMap": asGenericMap,
 		}).
 		Parse(contentWithEnvExpand)
 	if err != nil {
@@ -114,4 +115,12 @@ func hashFunc(filename string) (string, error) {
 
 func base64Func(content string) string {
 	return base64.StdEncoding.EncodeToString([]byte(content))
+}
+
+func asGenericMap(m map[string]string) map[string]interface{} {
+	ret := make(map[string]interface{}, len(m))
+	for k, v := range m {
+		ret[k] = v
+	}
+	return ret
 }
