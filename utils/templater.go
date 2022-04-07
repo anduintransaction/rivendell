@@ -11,6 +11,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/palantir/stacktrace"
 )
 
@@ -25,14 +26,18 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 	currentFolder := filepath.Dir(templateFile)
 	cwdStack.Push(currentFolder)
 	contentWithEnvExpand := ExpandEnv(string(content))
-	tmpl, err := template.New(templateFile).Funcs(map[string]interface{}{
-		"import":   importFunc,
-		"indent":   indentFunc,
-		"loadFile": loadFileFunc,
-		"trim":     trimFunc,
-		"hash":     hashFunc,
-		"base64":   base64Func,
-	}).Parse(contentWithEnvExpand)
+	tmpl, err := template.
+		New(templateFile).
+		Funcs(sprig.TxtFuncMap()).
+		Funcs(map[string]interface{}{
+			"import":   importFunc,
+			"indent":   indentFunc,
+			"loadFile": loadFileFunc,
+			"trim":     trimFunc,
+			"hash":     hashFunc,
+			"base64":   base64Func,
+		}).
+		Parse(contentWithEnvExpand)
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "cannot parse template file %q", templateFile)
 	}
