@@ -37,6 +37,7 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 			"hash":         hashFunc,
 			"base64":       base64Func,
 			"asGenericMap": asGenericMap,
+			"asMapString":  asMapString,
 		}).
 		Parse(contentWithEnvExpand)
 	if err != nil {
@@ -121,6 +122,19 @@ func asGenericMap(m map[string]string) map[string]interface{} {
 	ret := make(map[string]interface{}, len(m))
 	for k, v := range m {
 		ret[k] = v
+	}
+	return ret
+}
+
+func asMapString(m map[string]interface{}) map[string]string {
+	ret := make(map[string]string)
+	for k, v := range m {
+		if strVal, ok := v.(string); ok {
+			ret[k] = strVal
+		}
+		if strg, ok := v.(fmt.Stringer); ok {
+			ret[k] = strg.String()
+		}
 	}
 	return ret
 }
