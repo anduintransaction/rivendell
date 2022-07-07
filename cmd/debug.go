@@ -68,6 +68,10 @@ var debugCmd = &cobra.Command{
 			formatter = formatters.NewConsoleFormatter()
 		case "yaml":
 			formatter = formatters.NewYamlFormatter()
+		case "tree":
+			formatter = formatters.NewTreeFormatter()
+		case "config":
+			formatter = formatters.NewConfigFormatter()
 		default:
 			utils.Warn("Unknown output formatter. Fallback to console")
 			formatter = formatters.NewConsoleFormatter()
@@ -80,7 +84,7 @@ var debugCmd = &cobra.Command{
 func init() {
 	RootCmd.AddCommand(debugCmd)
 
-	debugCmd.Flags().StringVarP(&outputFormat, "output", "o", "console", "print format. One of: console|yaml")
+	debugCmd.Flags().StringVarP(&outputFormat, "output", "o", "console", "print format. One of: console|yaml|tree|config")
 	debugCmd.Flags().StringSliceVar(&filterGroups, "filter-groups", []string{}, "Only print resource groups")
 	debugCmd.Flags().StringVar(&filterGroupsRegex, "filter-groups-regex", "", "Only print resource groups matching pattern")
 }
