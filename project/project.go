@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -34,6 +35,7 @@ type Project struct {
 	resourceGraph         *ResourceGraph
 	filterFn              FilterFunc
 	deleteNamespaceConfig bool
+	config                *Config
 }
 
 // ReadProject reads a project from file
@@ -50,6 +52,7 @@ func ReadProject(projectFile, namespace, context, kubeConfig string, variables m
 	if err != nil {
 		return nil, err
 	}
+	project.config = projectConfig
 	project.deleteNamespaceConfig = projectConfig.DeleteNamespace
 	project.resolveProjectRoot(projectFile, projectConfig.RootDir)
 	project.resolveNamespace(namespace, projectConfig.Namespace)
@@ -175,6 +178,10 @@ func (p *Project) PrintCommonInfo() {
 	utils.Info("Using namespace %q", p.namespace)
 	utils.Info("Using context %q", p.context)
 	utils.Info("Using kubernetes config file %q", p.kubeConfig)
+}
+
+func (p *Project) PrintConfig() {
+	p.config.Write(os.Stdout)
 }
 
 // PrintUpPlan .
