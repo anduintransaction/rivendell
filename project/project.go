@@ -201,7 +201,10 @@ func (p *Project) PrintUpdatePlan() {
 	p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
 		fmt.Printf(" - %s %q\n", r.Kind, r.Name)
 		return nil
-	}, nil, nil)
+	}, nil, func(name, kind string) error {
+		fmt.Printf("- [wait] %s/%s\n", kind, name)
+		return nil
+	})
 }
 
 // PrintRestartPlan .
