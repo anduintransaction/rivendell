@@ -1,0 +1,30 @@
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - id: rivendell
+    dir: ./
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X github.com/anduintransaction/rivendell/utils.Version={{.Version}} -X github.com/anduintransaction/rivendell/utils.Commit={{.Commit}}
+archives:
+  - id: rivendell
+    builds:
+      - rivendell
+    name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    format: tar.gz
+    files:
+      - none*
+changelog:
+  skip: true
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  name_template: "dev-snapshot"

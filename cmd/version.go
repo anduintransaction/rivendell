@@ -27,7 +27,7 @@ var versionCmd = &cobra.Command{
 	Short: "Display rivendell version",
 	Long:  "Display rivendell version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(utils.Version)
+		fmt.Println(utils.FullVersion())
 	},
 }
 
