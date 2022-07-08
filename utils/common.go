@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,8 +12,16 @@ import (
 	"github.com/palantir/stacktrace"
 )
 
-// Version of rivendell
-var Version = "1.1.5"
+var (
+	// Version of rivendell
+	Version = "dev"
+	// Commit returns rivendell build commit
+	Commit = "unknown"
+)
+
+func FullVersion() string {
+	return fmt.Sprintf("%s (Commit: %s)", Version, Commit)
+}
 
 // MergeMaps merges multiple maps into one
 func MergeMaps(maps ...map[string]string) map[string]string {
