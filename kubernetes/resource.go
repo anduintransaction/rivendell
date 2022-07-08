@@ -180,9 +180,35 @@ func (r *Resource) Upgrade(name, kind, rawContent string) (updateStatus UpdateSt
 // Wait .
 func (r *Resource) Wait(name, kind string) (success bool, err error) {
 	kind = strings.ToLower(kind)
-	if kind != "pod" && kind != "job" {
+	switch kind {
+	case "pod":
+		fallthrough
+	case "job":
+		return r.waitByObjStatus(name, kind)
+	case "deploy":
+		fallthrough
+	case "deployment":
+		return r.waitByRolloutStatus(name, kind)
+	default:
 		return false, stacktrace.Propagate(ErrUnsupportedKind{kind}, "unsupported kind")
 	}
+}
+
+func (r *Resource) waitByRolloutStatus(name, kind string) (bool, error) {
+	args := r.context.completeArgs([]string{"rollout", "status", kind, name})
+	cmd := utils.NewCommand("kubectl", args...)
+	cmd.RedirectToStandard()
+	cmdResult, err := cmd.Run()
+	if err != nil {
+		return false, err
+	}
+	if cmdResult.ExitCode != 0 {
+		return false, ErrCommandExitCode{cmdResult.ExitCode}
+	}
+	return true, nil
+}
+
+func (r *Resource) waitByObjStatus(name, kind string) (bool, error) {
 	waitDelay := 5 * time.Second
 	for {
 		status, err := r.GetStatus(name, kind)
