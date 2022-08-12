@@ -107,3 +107,7 @@ func StringSliceToMap(s []string) map[string]bool {
 	}
 	return m
 }
+
+func IsURL(p string) bool {
+	return strings.HasPrefix(p, "http://") || strings.HasPrefix(p, "https://")
+}
