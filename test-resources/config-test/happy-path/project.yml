@@ -1,7 +1,7 @@
 root_dir: .
 namespace: coruscant
 variables:
-  postgresTag: {{.postgresImageTag}}
+  postgresTag: {{ .postgresImageTag }}
   redisTag: 4-alpine
   postgresSidecarImage: postgres-sidecar:{{.appTag}}
   redisSidecarImage: redis-sidecar:{{.appTag}}
@@ -35,3 +35,6 @@ resource_groups:
         kind: job
       - name: init-redis
         kind: job
+  - name: nginx
+    resources:
+      - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/controllers/nginx-deployment.yaml

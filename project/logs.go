@@ -23,14 +23,15 @@ func Logs(namespace, context, kubeConfig, name, containerName string, timeout in
 		}
 		waitChannel <- nil
 	}()
+
 	if timeout <= 0 {
-		err = <-waitChannel
+		<-waitChannel
 	} else {
 		timer := time.NewTimer(time.Duration(timeout) * time.Second)
 		select {
-		case err = <-waitChannel:
+		case <-waitChannel:
 		case <-timer.C:
-			err = stacktrace.Propagate(ErrWaitTimeout{name, "pod"}, "wait timeout")
+			stacktrace.Propagate(ErrWaitTimeout{name, "pod"}, "wait timeout")
 		}
 	}
 	return nil

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/anduintransaction/rivendell/utils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
@@ -63,7 +64,8 @@ func (s *ProjectTestSuite) TestReadProject() {
 				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
 					{
-						Source: filepath.Join(projectDir, "configs", "postgres-configs.yml"),
+						Source:     filepath.Join(projectDir, "configs", "postgres-configs.yml"),
+						ContextDir: filepath.Join(projectDir, "configs"),
 						Resources: []*Resource{
 							{
 								Name:     "postgres",
@@ -81,7 +83,8 @@ func (s *ProjectTestSuite) TestReadProject() {
 				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
 					{
-						Source: filepath.Join(projectDir, "secrets", "postgres-secrets.yml"),
+						Source:     filepath.Join(projectDir, "secrets", "postgres-secrets.yml"),
+						ContextDir: filepath.Join(projectDir, "secrets"),
 						Resources: []*Resource{
 							{
 								Name:     "postgres",
@@ -99,7 +102,8 @@ func (s *ProjectTestSuite) TestReadProject() {
 				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
 					{
-						Source: filepath.Join(projectDir, "databases", "postgres.yml"),
+						Source:     filepath.Join(projectDir, "databases", "postgres.yml"),
+						ContextDir: filepath.Join(projectDir, "databases"),
 						Resources: []*Resource{
 							{
 								Name:     "postgres",
@@ -114,7 +118,8 @@ func (s *ProjectTestSuite) TestReadProject() {
 						},
 					},
 					{
-						Source: filepath.Join(projectDir, "databases", "redis.yml"),
+						Source:     filepath.Join(projectDir, "databases", "redis.yml"),
+						ContextDir: filepath.Join(projectDir, "databases"),
 						Resources: []*Resource{
 							{
 								Name:     "redis",
@@ -137,7 +142,8 @@ func (s *ProjectTestSuite) TestReadProject() {
 				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
 					{
-						Source: filepath.Join(projectDir, "jobs", "init-postgres.yml"),
+						Source:     filepath.Join(projectDir, "jobs", "init-postgres.yml"),
+						ContextDir: filepath.Join(projectDir, "jobs"),
 						Resources: []*Resource{
 							{
 								Name:     "init-postgres",
@@ -147,7 +153,8 @@ func (s *ProjectTestSuite) TestReadProject() {
 						},
 					},
 					{
-						Source: filepath.Join(projectDir, "jobs", "init-redis.yml"),
+						Source:     filepath.Join(projectDir, "jobs", "init-redis.yml"),
+						ContextDir: filepath.Join(projectDir, "jobs"),
 						Resources: []*Resource{
 							{
 								Name:     "init-redis",
@@ -174,7 +181,8 @@ func (s *ProjectTestSuite) TestReadProject() {
 				},
 				ResourceFiles: []*ResourceFile{
 					{
-						Source: filepath.Join(projectDir, "services", "app.yml"),
+						Source:     filepath.Join(projectDir, "services", "app.yml"),
+						ContextDir: filepath.Join(projectDir, "services"),
 						Resources: []*Resource{
 							{
 								Name:     "app",
@@ -191,34 +199,53 @@ func (s *ProjectTestSuite) TestReadProject() {
 				},
 				Children: []string{},
 			},
+			"nginx": {
+				Name:   "nginx",
+				Depend: []string{},
+				Wait:   []*WaitConfig{},
+				ResourceFiles: []*ResourceFile{
+					{
+						Source:     "https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/controllers/nginx-deployment.yaml",
+						ContextDir: projectDir,
+						Resources: []*Resource{
+							{
+								Name:     "nginx-deployment",
+								Kind:     "Deployment",
+								Filepath: "https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/controllers/nginx-deployment.yaml",
+							},
+						},
+					},
+				},
+				Children: []string{},
+			},
 		},
-		RootNodes: []string{"configs", "secrets"},
-		LeafNodes: []string{"services"},
+		RootNodes: []string{"configs", "nginx", "secrets"},
+		LeafNodes: []string{"nginx", "services"},
 	}
 	require.Equal(s.T(), expectedResourceGraph, s.stripResourceContent(project.resourceGraph))
 
 	s.verifyVariableValue(
-		project.resourceGraph.ResourceGroups["databases"].ResourceFiles[0].RawContent,
+		project.resourceGraph.ResourceGroups["databases"].ResourceFiles[0].ExpandedContent,
 		"image: ",
 		"image: postgres:9.6",
 	)
 	s.verifyVariableValue(
-		project.resourceGraph.ResourceGroups["databases"].ResourceFiles[1].RawContent,
+		project.resourceGraph.ResourceGroups["databases"].ResourceFiles[1].ExpandedContent,
 		"image: ",
 		"image: redis:4-alpine",
 	)
 	s.verifyVariableValue(
-		project.resourceGraph.ResourceGroups["init-jobs"].ResourceFiles[0].RawContent,
+		project.resourceGraph.ResourceGroups["init-jobs"].ResourceFiles[0].ExpandedContent,
 		"image: ",
 		"image: postgres-sidecar:1.1.4",
 	)
 	s.verifyVariableValue(
-		project.resourceGraph.ResourceGroups["init-jobs"].ResourceFiles[1].RawContent,
+		project.resourceGraph.ResourceGroups["init-jobs"].ResourceFiles[1].ExpandedContent,
 		"image: ",
 		"image: redis-sidecar:1.1.4",
 	)
 	s.verifyVariableValue(
-		project.resourceGraph.ResourceGroups["services"].ResourceFiles[0].RawContent,
+		project.resourceGraph.ResourceGroups["services"].ResourceFiles[0].ExpandedContent,
 		"image: ",
 		"image: app:1.1.4",
 	)
@@ -230,11 +257,11 @@ metadata:
 data:
   pgdata: /data/postgres
 `
-	require.Equal(s.T(), expectedConfigContent, project.resourceGraph.ResourceGroups["configs"].ResourceFiles[0].RawContent)
+	require.Equal(s.T(), expectedConfigContent, project.resourceGraph.ResourceGroups["configs"].ResourceFiles[0].ExpandedContent)
 }
 
-func (s *ProjectTestSuite) TestGlob() {
-	projectDir := filepath.Join(s.resourceRoot, "config-test", "glob")
+func (s *ProjectTestSuite) TestGlobUrl() {
+	projectDir := filepath.Join(s.resourceRoot, "config-test", "globurl")
 	projectFile := filepath.Join(projectDir, "project.yml")
 	includes := []string{"**/*.yml"}
 	excludes := []string{"**/mango.yml"}
@@ -244,15 +271,19 @@ func (s *ProjectTestSuite) TestGlob() {
 	actualFiles := []string{}
 	project.resourceGraph.WalkForward(func(g *ResourceGroup) error {
 		for _, f := range g.ResourceFiles {
-			actualFiles = append(actualFiles, strings.TrimPrefix(f.Source, projectDir))
+			actualFiles = append(actualFiles, f.Source)
 		}
 		return nil
 	})
-	expected := []string{
-		"/items/consumables/bottle.yml",
-		"/items/consumables/tango.yml",
-		"/items/defence/shiva.yml",
-	}
+	expected := append(
+		utils.PrependPaths(projectDir, []string{
+			"/items/consumables/bottle.yml",
+			"/items/consumables/tango.yml",
+			"/items/defence/shiva.yml",
+		}),
+		"https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/controllers/nginx-deployment.yaml",
+	)
+
 	require.Equal(s.T(), expected, actualFiles)
 }
 
@@ -266,6 +297,7 @@ func (s *ProjectTestSuite) stripResourceContent(resourceGraph *ResourceGraph) *R
 	for _, rg := range strippedGraph.ResourceGroups {
 		for _, rf := range rg.ResourceFiles {
 			rf.RawContent = ""
+			rf.ExpandedContent = ""
 			for _, r := range rf.Resources {
 				r.RawContent = ""
 			}
