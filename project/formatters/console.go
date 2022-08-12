@@ -18,7 +18,7 @@ func (f *ConsoleFormatter) Format(p *project.Project) {
 	p.WalkForward(func(g *project.ResourceGroup) error {
 		utils.Info("Resource group %q", g.Name)
 		for _, rf := range g.ResourceFiles {
-			utils.Info2("Resource file %q", rf.FilePath)
+			utils.Info2("Resource file %q", rf.Source)
 			fmt.Println()
 			for _, r := range rf.Resources {
 				fmt.Println(r.RawContent)

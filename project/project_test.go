@@ -57,15 +57,15 @@ func (s *ProjectTestSuite) TestReadProject() {
 	require.Equal(s.T(), expectedVariables, project.variables)
 	expectedResourceGraph := &ResourceGraph{
 		ResourceGroups: map[string]*ResourceGroup{
-			"configs": &ResourceGroup{
+			"configs": {
 				Name:   "configs",
 				Depend: []string{},
 				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
-					&ResourceFile{
-						FilePath: filepath.Join(projectDir, "configs", "postgres-configs.yml"),
+					{
+						Source: filepath.Join(projectDir, "configs", "postgres-configs.yml"),
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name:     "postgres",
 								Kind:     "ConfigMap",
 								Filepath: filepath.Join(projectDir, "configs", "postgres-configs.yml"),
@@ -75,15 +75,15 @@ func (s *ProjectTestSuite) TestReadProject() {
 				},
 				Children: []string{"databases"},
 			},
-			"secrets": &ResourceGroup{
+			"secrets": {
 				Name:   "secrets",
 				Depend: []string{},
 				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
-					&ResourceFile{
-						FilePath: filepath.Join(projectDir, "secrets", "postgres-secrets.yml"),
+					{
+						Source: filepath.Join(projectDir, "secrets", "postgres-secrets.yml"),
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name:     "postgres",
 								Kind:     "Secret",
 								Filepath: filepath.Join(projectDir, "secrets", "postgres-secrets.yml"),
@@ -93,35 +93,35 @@ func (s *ProjectTestSuite) TestReadProject() {
 				},
 				Children: []string{"databases"},
 			},
-			"databases": &ResourceGroup{
+			"databases": {
 				Name:   "databases",
 				Depend: []string{"configs", "secrets"},
 				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
-					&ResourceFile{
-						FilePath: filepath.Join(projectDir, "databases", "postgres.yml"),
+					{
+						Source: filepath.Join(projectDir, "databases", "postgres.yml"),
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name:     "postgres",
 								Kind:     "Deployment",
 								Filepath: filepath.Join(projectDir, "databases", "postgres.yml"),
 							},
-							&Resource{
+							{
 								Name:     "postgres",
 								Kind:     "Service",
 								Filepath: filepath.Join(projectDir, "databases", "postgres.yml"),
 							},
 						},
 					},
-					&ResourceFile{
-						FilePath: filepath.Join(projectDir, "databases", "redis.yml"),
+					{
+						Source: filepath.Join(projectDir, "databases", "redis.yml"),
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name:     "redis",
 								Kind:     "Deployment",
 								Filepath: filepath.Join(projectDir, "databases", "redis.yml"),
 							},
-							&Resource{
+							{
 								Name:     "redis",
 								Kind:     "Service",
 								Filepath: filepath.Join(projectDir, "databases", "redis.yml"),
@@ -131,25 +131,25 @@ func (s *ProjectTestSuite) TestReadProject() {
 				},
 				Children: []string{"init-jobs"},
 			},
-			"init-jobs": &ResourceGroup{
+			"init-jobs": {
 				Name:   "init-jobs",
 				Depend: []string{"databases"},
 				Wait:   []*WaitConfig{},
 				ResourceFiles: []*ResourceFile{
-					&ResourceFile{
-						FilePath: filepath.Join(projectDir, "jobs", "init-postgres.yml"),
+					{
+						Source: filepath.Join(projectDir, "jobs", "init-postgres.yml"),
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name:     "init-postgres",
 								Kind:     "Job",
 								Filepath: filepath.Join(projectDir, "jobs", "init-postgres.yml"),
 							},
 						},
 					},
-					&ResourceFile{
-						FilePath: filepath.Join(projectDir, "jobs", "init-redis.yml"),
+					{
+						Source: filepath.Join(projectDir, "jobs", "init-redis.yml"),
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name:     "init-redis",
 								Kind:     "Job",
 								Filepath: filepath.Join(projectDir, "jobs", "init-redis.yml"),
@@ -159,29 +159,29 @@ func (s *ProjectTestSuite) TestReadProject() {
 				},
 				Children: []string{"services"},
 			},
-			"services": &ResourceGroup{
+			"services": {
 				Name:   "services",
 				Depend: []string{"init-jobs"},
 				Wait: []*WaitConfig{
-					&WaitConfig{
+					{
 						Name: "init-postgres",
 						Kind: "job",
 					},
-					&WaitConfig{
+					{
 						Name: "init-redis",
 						Kind: "job",
 					},
 				},
 				ResourceFiles: []*ResourceFile{
-					&ResourceFile{
-						FilePath: filepath.Join(projectDir, "services", "app.yml"),
+					{
+						Source: filepath.Join(projectDir, "services", "app.yml"),
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name:     "app",
 								Kind:     "Deployment",
 								Filepath: filepath.Join(projectDir, "services", "app.yml"),
 							},
-							&Resource{
+							{
 								Name:     "app",
 								Kind:     "Service",
 								Filepath: filepath.Join(projectDir, "services", "app.yml"),
@@ -244,7 +244,7 @@ func (s *ProjectTestSuite) TestGlob() {
 	actualFiles := []string{}
 	project.resourceGraph.WalkForward(func(g *ResourceGroup) error {
 		for _, f := range g.ResourceFiles {
-			actualFiles = append(actualFiles, strings.TrimPrefix(f.FilePath, projectDir))
+			actualFiles = append(actualFiles, strings.TrimPrefix(f.Source, projectDir))
 		}
 		return nil
 	})

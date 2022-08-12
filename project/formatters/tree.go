@@ -20,7 +20,7 @@ func (f *TreeFormatter) Format(p *project.Project) {
 	p.WalkForward(func(g *project.ResourceGroup) error {
 		fmt.Fprintf(out, "- Group: %s\n", g.Name)
 		for _, rf := range g.ResourceFiles {
-			fmt.Fprintf(out, "  - File: %s\n", rf.FilePath)
+			fmt.Fprintf(out, "  - File: %s\n", rf.Source)
 		}
 		for _, rd := range g.Depend {
 			fmt.Fprintf(out, "  - Dep: %s\n", rd)

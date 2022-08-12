@@ -32,7 +32,7 @@ type ResourceGroup struct {
 // ResourceFile holds configuration for a single resource file.
 // There are maybe multiple resources in a resource file
 type ResourceFile struct {
-	FilePath   string
+	Source     string
 	Resources  []*Resource
 	RawContent string
 }
@@ -117,7 +117,7 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 				return nil, err
 			}
 			rf := &ResourceFile{
-				FilePath:   resourceFile,
+				Source:     resourceFile,
 				RawContent: rg.removeNamespace(string(fileContent)),
 			}
 			err = rg.splitResourceFile(rf)
@@ -325,12 +325,12 @@ func (rg *ResourceGraph) splitResourceFile(resourceFile *ResourceFile) error {
 		parsedResource := &resourceYAML{}
 		err := yaml.Unmarshal([]byte(part), parsedResource)
 		if err != nil {
-			return stacktrace.Propagate(err, "Cannot parse yaml file %q. Content: %s", resourceFile.FilePath, part)
+			return stacktrace.Propagate(err, "Cannot parse yaml file %q. Content: %s", resourceFile.Source, part)
 		}
 		resource := &Resource{
 			Name:       parsedResource.Metadata.Name,
 			Kind:       parsedResource.Kind,
-			Filepath:   resourceFile.FilePath,
+			Filepath:   resourceFile.Source,
 			RawContent: part,
 		}
 		resourceFile.Resources = append(resourceFile.Resources, resource)
