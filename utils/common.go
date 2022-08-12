@@ -73,6 +73,16 @@ func StringArrayMap(a []string, f func(string) string) []string {
 	return result
 }
 
+func StringArrayFilter(a []string, f func(string) bool) []string {
+	result := []string{}
+	for _, x := range a {
+		if f(x) {
+			result = append(result, x)
+		}
+	}
+	return result
+}
+
 // PrependPaths prepends a prefix to an array of paths
 func PrependPaths(prefix string, paths []string) []string {
 	return StringArrayMap(paths, func(path string) string {

@@ -24,10 +24,22 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 		return nil, stacktrace.Propagate(err, "cannot read template file %q", templateFile)
 	}
 	currentFolder := filepath.Dir(templateFile)
-	cwdStack.Push(currentFolder)
+
+	rendered, err := ExecuteTemplateContent(currentFolder, content, variables)
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "template file %q", templateFile)
+	}
+	return rendered, nil
+}
+
+// ExecuteTemplateContent .
+func ExecuteTemplateContent(rootDir string, content []byte, variables map[string]string) ([]byte, error) {
+	cwdStack.Push(rootDir)
+	defer cwdStack.Pop()
+
 	contentWithEnvExpand := ExpandEnv(string(content))
 	tmpl, err := template.
-		New(templateFile).
+		New("template").
 		Funcs(sprig.TxtFuncMap()).
 		Funcs(map[string]interface{}{
 			"import":       importFunc,
@@ -41,15 +53,14 @@ func ExecuteTemplate(templateFile string, variables map[string]string) ([]byte, 
 		}).
 		Parse(contentWithEnvExpand)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "cannot parse template file %q", templateFile)
+		return nil, stacktrace.Propagate(err, "cannot parse template")
 	}
 	tmpl = tmpl.Option("missingkey=error")
 	b := &bytes.Buffer{}
 	err = tmpl.Execute(b, variables)
 	if err != nil {
-		return nil, stacktrace.Propagate(err, "cannot execute template file %q", templateFile)
+		return nil, stacktrace.Propagate(err, "cannot execute template")
 	}
-	cwdStack.Pop()
 	return b.Bytes(), nil
 }
 
