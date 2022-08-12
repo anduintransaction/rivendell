@@ -143,7 +143,7 @@ func (p *Project) GetServicePods() ([]string, error) {
 		return nil, err
 	}
 	pods := utils.NewStringSet()
-	err = p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
+	_ = p.resourceGraph.WalkResourceForward(func(r *Resource, g *ResourceGroup) error {
 		if strings.ToLower(r.Kind) == "service" {
 			servicePods, err := kubeContext.Service().ListPods(r.Name)
 			if err != nil {

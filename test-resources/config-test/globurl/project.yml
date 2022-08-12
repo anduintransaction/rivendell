@@ -1,0 +1,10 @@
+root_dir: .
+resource_groups:
+  - name: items
+    resources:
+      - "items/**/*"
+    excludes:
+      - "**/bkb.yml"
+  - name: urltest
+    resources:
+      - https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/controllers/nginx-deployment.yaml

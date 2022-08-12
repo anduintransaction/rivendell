@@ -21,31 +21,31 @@ func (s *ResourceTestSuite) SetupTest() {
 func (s *ResourceTestSuite) TestResolveChildren() {
 	rg1 := &ResourceGraph{
 		ResourceGroups: map[string]*ResourceGroup{
-			"a": &ResourceGroup{
+			"a": {
 				Name:   "a",
 				Depend: []string{},
 			},
-			"b": &ResourceGroup{
+			"b": {
 				Name:   "b",
 				Depend: []string{},
 			},
-			"c": &ResourceGroup{
+			"c": {
 				Name:   "c",
 				Depend: []string{"a"},
 			},
-			"d": &ResourceGroup{
+			"d": {
 				Name:   "d",
 				Depend: []string{"a", "b"},
 			},
-			"e": &ResourceGroup{
+			"e": {
 				Name:   "e",
 				Depend: []string{"b"},
 			},
-			"f": &ResourceGroup{
+			"f": {
 				Name:   "f",
 				Depend: []string{"a", "c", "d"},
 			},
-			"g": &ResourceGroup{
+			"g": {
 				Name:   "g",
 				Depend: []string{"d", "e"},
 			},
@@ -55,36 +55,36 @@ func (s *ResourceTestSuite) TestResolveChildren() {
 	require.Nil(s.T(), err, "children should be resolved successfully")
 	expectedRg1 := &ResourceGraph{
 		ResourceGroups: map[string]*ResourceGroup{
-			"a": &ResourceGroup{
+			"a": {
 				Name:     "a",
 				Depend:   []string{},
 				Children: []string{"c", "d", "f"},
 			},
-			"b": &ResourceGroup{
+			"b": {
 				Name:     "b",
 				Depend:   []string{},
 				Children: []string{"d", "e"},
 			},
-			"c": &ResourceGroup{
+			"c": {
 				Name:     "c",
 				Depend:   []string{"a"},
 				Children: []string{"f"},
 			},
-			"d": &ResourceGroup{
+			"d": {
 				Name:     "d",
 				Depend:   []string{"a", "b"},
 				Children: []string{"f", "g"},
 			},
-			"e": &ResourceGroup{
+			"e": {
 				Name:     "e",
 				Depend:   []string{"b"},
 				Children: []string{"g"},
 			},
-			"f": &ResourceGroup{
+			"f": {
 				Name:   "f",
 				Depend: []string{"a", "c", "d"},
 			},
-			"g": &ResourceGroup{
+			"g": {
 				Name:   "g",
 				Depend: []string{"d", "e"},
 			},
@@ -95,7 +95,7 @@ func (s *ResourceTestSuite) TestResolveChildren() {
 
 	rg2 := &ResourceGraph{
 		ResourceGroups: map[string]*ResourceGroup{
-			"a": &ResourceGroup{
+			"a": {
 				Name:   "a",
 				Depend: []string{"b"},
 			},
@@ -115,7 +115,7 @@ func (s *ResourceTestSuite) TestCyclic() {
 	require.Nil(s.T(), err)
 	rg2 := &ResourceGraph{
 		ResourceGroups: map[string]*ResourceGroup{
-			"a": &ResourceGroup{
+			"a": {
 				Name:   "a",
 				Depend: []string{"a"},
 			},
@@ -126,42 +126,42 @@ func (s *ResourceTestSuite) TestCyclic() {
 	require.Equal(s.T(), ErrCyclicDependency{"a"}, stacktrace.RootCause(err))
 	rg3 := &ResourceGraph{
 		ResourceGroups: map[string]*ResourceGroup{
-			"a": &ResourceGroup{
+			"a": {
 				Name:     "a",
 				Depend:   []string{},
 				Children: []string{"c", "d", "f"},
 			},
-			"b": &ResourceGroup{
+			"b": {
 				Name:     "b",
 				Depend:   []string{},
 				Children: []string{"d", "e"},
 			},
-			"c": &ResourceGroup{
+			"c": {
 				Name:     "c",
 				Depend:   []string{"a"},
 				Children: []string{"f"},
 			},
-			"d": &ResourceGroup{
+			"d": {
 				Name:     "d",
 				Depend:   []string{"a", "b"},
 				Children: []string{"f"},
 			},
-			"e": &ResourceGroup{
+			"e": {
 				Name:     "e",
 				Depend:   []string{"b"},
 				Children: []string{"g"},
 			},
-			"f": &ResourceGroup{
+			"f": {
 				Name:     "f",
 				Depend:   []string{"a", "c", "d"},
 				Children: []string{"h"},
 			},
-			"g": &ResourceGroup{
+			"g": {
 				Name:     "g",
 				Depend:   []string{"d", "e"},
 				Children: []string{"h"},
 			},
-			"h": &ResourceGroup{
+			"h": {
 				Name:     "h",
 				Depend:   []string{"f", "g"},
 				Children: []string{"e"},
@@ -172,23 +172,23 @@ func (s *ResourceTestSuite) TestCyclic() {
 	require.NotNil(s.T(), err)
 	rg4 := &ResourceGraph{
 		ResourceGroups: map[string]*ResourceGroup{
-			"a": &ResourceGroup{
+			"a": {
 				Name:   "a",
 				Depend: []string{},
 			},
-			"b": &ResourceGroup{
+			"b": {
 				Name:   "b",
 				Depend: []string{"b"},
 			},
-			"c": &ResourceGroup{
+			"c": {
 				Name:   "c",
 				Depend: []string{},
 			},
-			"d": &ResourceGroup{
+			"d": {
 				Name:   "d",
 				Depend: []string{},
 			},
-			"e": &ResourceGroup{
+			"e": {
 				Name:   "e",
 				Depend: []string{},
 			},
@@ -212,35 +212,35 @@ func (s *ResourceTestSuite) TestWalk() {
 	rg := &ResourceGraph{
 		RootNodes: []string{"a", "b"},
 		ResourceGroups: map[string]*ResourceGroup{
-			"a": &ResourceGroup{
+			"a": {
 				Name:   "a",
 				Depend: []string{},
 			},
-			"b": &ResourceGroup{
+			"b": {
 				Name:   "b",
 				Depend: []string{},
 			},
-			"c": &ResourceGroup{
+			"c": {
 				Name:   "c",
 				Depend: []string{"a"},
 			},
-			"f": &ResourceGroup{
+			"f": {
 				Name:   "f",
 				Depend: []string{"a", "b"},
 			},
-			"e": &ResourceGroup{
+			"e": {
 				Name:   "e",
 				Depend: []string{"b"},
 			},
-			"d": &ResourceGroup{
+			"d": {
 				Name:   "d",
 				Depend: []string{"c", "a", "f"},
 			},
-			"g": &ResourceGroup{
+			"g": {
 				Name:   "g",
 				Depend: []string{"f", "e"},
 			},
-			"h": &ResourceGroup{
+			"h": {
 				Name:   "h",
 				Depend: []string{"d", "g"},
 			},
@@ -265,31 +265,31 @@ func (s *ResourceTestSuite) TestWalkWithWait() {
 	rg := &ResourceGraph{
 		RootNodes: []string{"a"},
 		ResourceGroups: map[string]*ResourceGroup{
-			"a": &ResourceGroup{
+			"a": {
 				Name: "a",
 				ResourceFiles: []*ResourceFile{
-					&ResourceFile{
+					{
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name: "Test",
 							},
 						},
 					},
 				},
 				Wait: []*WaitConfig{
-					&WaitConfig{
+					{
 						Name: "test",
 						Kind: "test",
 					},
 				},
 			},
-			"b": &ResourceGroup{
+			"b": {
 				Name:   "b",
 				Depend: []string{"a"},
 				ResourceFiles: []*ResourceFile{
-					&ResourceFile{
+					{
 						Resources: []*Resource{
-							&Resource{
+							{
 								Name: "Test",
 							},
 						},

@@ -35,39 +35,43 @@ func (s *ConfigTestSuite) TestReadProjectConfig() {
 			"redisSidecarImage":    "redis-sidecar:1.1.4",
 		},
 		ResourceGroups: []*ResourceGroupConfig{
-			&ResourceGroupConfig{
+			{
 				Name:      "configs",
 				Resources: []string{"./configs/*.yml"},
 				Excludes:  []string{"./configs/*ignore*"},
 			},
-			&ResourceGroupConfig{
+			{
 				Name:      "secrets",
 				Resources: []string{"./secrets/*.yml"},
 			},
-			&ResourceGroupConfig{
+			{
 				Name:      "databases",
 				Resources: []string{"./databases/*.yml"},
 				Depend:    []string{"configs", "secrets"},
 			},
-			&ResourceGroupConfig{
+			{
 				Name:      "init-jobs",
 				Resources: []string{"./jobs/*.yml"},
 				Depend:    []string{"databases"},
 			},
-			&ResourceGroupConfig{
+			{
 				Name:      "services",
 				Resources: []string{"./services/*.yml"},
 				Depend:    []string{"init-jobs"},
 				Wait: []*WaitConfig{
-					&WaitConfig{
+					{
 						Name: "init-postgres",
 						Kind: "job",
 					},
-					&WaitConfig{
+					{
 						Name: "init-redis",
 						Kind: "job",
 					},
 				},
+			},
+			{
+				Name:      "nginx",
+				Resources: []string{"https://raw.githubusercontent.com/kubernetes/website/main/content/en/examples/controllers/nginx-deployment.yaml"},
 			},
 		},
 	}

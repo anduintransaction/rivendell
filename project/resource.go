@@ -1,16 +1,11 @@
 package project
 
 import (
-	"bufio"
-	"bytes"
-	"os"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/palantir/stacktrace"
-	yaml "gopkg.in/yaml.v2"
 )
 
 // ResourceGraph .
@@ -68,18 +63,7 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 		RootNodes:      []string{},
 		LeafNodes:      []string{},
 	}
-	useGlobalIncludes := false
-	globalResourceFiles := []string{}
-	var err error
-	if len(includeResources) > 0 {
-		useGlobalIncludes = true
-		globalIncludePatterns := utils.PrependPaths(rootDir, includeResources)
-		globalResourceFiles, err = utils.GlobFiles(globalIncludePatterns, nil)
-		if err != nil {
-			return nil, err
-		}
-	}
-	globalExcludePatterns := utils.PrependPaths(rootDir, excludeResources)
+
 	for _, resourceGroupConfig := range resourceGroupConfigs {
 		g := &ResourceGroup{
 			Name:     resourceGroupConfig.Name,
@@ -94,44 +78,29 @@ func ReadResourceGraph(rootDir string, resourceGroupConfigs []*ResourceGroupConf
 		if len(g.Depend) == 0 {
 			rg.RootNodes = append(rg.RootNodes, g.Name)
 		}
-		includePatterns := utils.PrependPaths(rootDir, resourceGroupConfig.Resources)
-		excludePatterns := append(utils.PrependPaths(rootDir, resourceGroupConfig.Excludes), globalExcludePatterns...)
-		resourceFiles, err := utils.GlobFiles(includePatterns, excludePatterns)
+
+		// resolve and process resource files
+		resourceFiles, err := resolveResourceFile(rootDir, resourceGroupConfig, includeResources, excludeResources)
 		if err != nil {
 			return nil, err
 		}
-		if useGlobalIncludes {
-			globalResourceSet := utils.NewStringSet(globalResourceFiles...)
-			resourceSet := utils.NewStringSet(resourceFiles...)
-			joinSet := globalResourceSet.Join(resourceSet)
-			resourceFiles = joinSet.ToSlice()
-			sort.Strings(resourceFiles)
+		processors := []ResourceFileProcessor{
+			expandResourceContent(variables),
+			stripNamespace(),
+			splitResourceContent(),
 		}
 		for _, resourceFile := range resourceFiles {
-			stat, err := os.Stat(resourceFile)
-			if err != nil {
-				return nil, err
+			for _, proc := range processors {
+				if err := proc.Process(resourceFile); err != nil {
+					return nil, err
+				}
 			}
-			if stat.IsDir() {
-				continue
-			}
-			fileContent, err := utils.ExecuteTemplate(resourceFile, variables)
-			if err != nil {
-				return nil, err
-			}
-			rf := &ResourceFile{
-				Source:     resourceFile,
-				RawContent: rg.removeNamespace(string(fileContent)),
-			}
-			err = rg.splitResourceFile(rf)
-			if err != nil {
-				return nil, err
-			}
-			g.ResourceFiles = append(g.ResourceFiles, rf)
 		}
+		g.ResourceFiles = resourceFiles
 	}
+
 	sort.Strings(rg.RootNodes)
-	err = rg.resolveChildren()
+	err := rg.resolveChildren()
 	if err != nil {
 		return nil, err
 	}
@@ -208,10 +177,7 @@ func (rg *ResourceGraph) WalkBackwardWithWait(f func(g *ResourceGroup) error, re
 
 // WalkForward through the graph, BFS style
 func (rg *ResourceGraph) WalkForward(f func(g *ResourceGroup) error) error {
-	candidates := []string{}
-	for _, candidate := range rg.RootNodes {
-		candidates = append(candidates, candidate)
-	}
+	candidates := append([]string{}, rg.RootNodes...)
 	visited := utils.NewStringSet()
 	for len(candidates) > 0 {
 		current := candidates[0]
@@ -240,10 +206,7 @@ func (rg *ResourceGraph) WalkForward(f func(g *ResourceGroup) error) error {
 
 // WalkBackward through the graph, BFS style
 func (rg *ResourceGraph) WalkBackward(f func(g *ResourceGroup) error) error {
-	candidates := []string{}
-	for _, candidate := range rg.LeafNodes {
-		candidates = append(candidates, candidate)
-	}
+	candidates := append([]string{}, rg.LeafNodes...)
 	visited := utils.NewStringSet()
 	for len(candidates) > 0 {
 		current := candidates[0]
@@ -304,41 +267,6 @@ func (rg *ResourceGraph) WalkResourceBackward(f func(r *Resource, g *ResourceGro
 		}
 		return nil
 	}, readyFunc)
-}
-
-func (rg *ResourceGraph) removeNamespace(content string) string {
-	scanner := bufio.NewScanner(bytes.NewBuffer([]byte(content)))
-	strippedContent := ""
-	for scanner.Scan() {
-		line := scanner.Text()
-		if !strings.HasPrefix(line, "  namespace:") {
-			strippedContent += line + "\n"
-		}
-	}
-	return strippedContent
-}
-
-func (rg *ResourceGraph) splitResourceFile(resourceFile *ResourceFile) error {
-	parts := strings.Split(string(resourceFile.RawContent), "---\n")
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if len(part) == 0 {
-			continue
-		}
-		parsedResource := &resourceYAML{}
-		err := yaml.Unmarshal([]byte(part), parsedResource)
-		if err != nil {
-			return stacktrace.Propagate(err, "Cannot parse yaml file %q. Content: %s", resourceFile.Source, part)
-		}
-		resource := &Resource{
-			Name:       parsedResource.Metadata.Name,
-			Kind:       parsedResource.Kind,
-			Filepath:   resourceFile.Source,
-			RawContent: part,
-		}
-		resourceFile.Resources = append(resourceFile.Resources, resource)
-	}
-	return nil
 }
 
 func (rg *ResourceGraph) resolveChildren() error {
@@ -427,9 +355,7 @@ func (rg *ResourceGraph) waitFor(wait *WaitConfig, waitFunc func(name, kind stri
 func (g *ResourceGroup) allResources() []*Resource {
 	resources := []*Resource{}
 	for _, rf := range g.ResourceFiles {
-		for _, r := range rf.Resources {
-			resources = append(resources, r)
-		}
+		resources = append(resources, rf.Resources...)
 	}
 	return resources
 }
