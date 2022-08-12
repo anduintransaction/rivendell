@@ -23,6 +23,7 @@ type ResourceGraph struct {
 // ResourceGroup holds configuration for a resource group
 type ResourceGroup struct {
 	Name          string
+	Templater     string
 	ResourceFiles []*ResourceFile
 	Depend        []string
 	Wait          []*WaitConfig
@@ -32,9 +33,11 @@ type ResourceGroup struct {
 // ResourceFile holds configuration for a single resource file.
 // There are maybe multiple resources in a resource file
 type ResourceFile struct {
-	Source     string
-	Resources  []*Resource
-	RawContent string
+	Source          string
+	ContextDir      string
+	Resources       []*Resource
+	RawContent      string
+	ExpandedContent string
 }
 
 // Resource holds configuration for a single resource
