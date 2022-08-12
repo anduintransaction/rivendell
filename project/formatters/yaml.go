@@ -20,7 +20,7 @@ func (f *YamlFormatter) Format(p *project.Project) {
 	p.WalkForward(func(g *project.ResourceGroup) error {
 		for _, rf := range g.ResourceFiles {
 			for _, r := range rf.Resources {
-				fmt.Fprintf(out, "# Resource group %q - Resource file %q\n", g.Name, rf.FilePath)
+				fmt.Fprintf(out, "# Resource group %q - Resource file %q\n", g.Name, rf.Source)
 				fmt.Fprintln(out)
 				fmt.Fprintln(out, r.RawContent)
 				fmt.Fprintln(out, sep)
