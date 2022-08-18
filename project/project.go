@@ -90,7 +90,7 @@ func (p *Project) Up() error {
 }
 
 // Down .
-func (p *Project) Down() error {
+func (p *Project) Down(deleteNS bool) error {
 	kubeContext, err := kubernetes.NewContext(p.namespace, p.context, p.kubeConfig)
 	if err != nil {
 		return err
@@ -100,6 +100,10 @@ func (p *Project) Down() error {
 	}, func(r *Resource, g *ResourceGroup) error {
 		return p.waitForDeleted(kubeContext, r)
 	})
+	if !deleteNS {
+		return nil
+	}
+
 	// Delete namespace anyway, this may have the side-effect of deleting all resources.
 	errNamespaceDelete := p.deleteNamespace(kubeContext)
 	if errNamespaceDelete != nil {
