@@ -26,9 +26,10 @@ import (
 )
 
 var (
-	outputFormat      string
-	filterGroups      []string
-	filterGroupsRegex string
+	outputFormat       string
+	filterGroups       []string
+	filterGroupsRegex  string
+	debugPrintResource bool
 )
 
 // debugCmd represents the debug command
@@ -69,7 +70,9 @@ var debugCmd = &cobra.Command{
 		case "yaml":
 			formatter = formatters.NewYamlFormatter()
 		case "tree":
-			formatter = formatters.NewTreeFormatter()
+			formatter = formatters.NewTreeFormatter(&formatters.TreeFormatterOptions{
+				PrintResource: debugPrintResource,
+			})
 		case "config":
 			formatter = formatters.NewConfigFormatter()
 		default:
@@ -87,4 +90,5 @@ func init() {
 	debugCmd.Flags().StringVarP(&outputFormat, "output", "o", "console", "print format. One of: console|yaml|tree|config")
 	debugCmd.Flags().StringSliceVar(&filterGroups, "filter-groups", []string{}, "Only print resource groups")
 	debugCmd.Flags().StringVar(&filterGroupsRegex, "filter-groups-regex", "", "Only print resource groups matching pattern")
+	debugCmd.Flags().BoolVar(&debugPrintResource, "print-resource", false, "Print resource in tree format")
 }

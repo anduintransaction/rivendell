@@ -49,7 +49,7 @@ func (s *CommandTestSuite) TestUpAndDown() {
 		}
 		return nil
 	})
-	err = project.Down(true)
+	err = project.Down(true, true)
 	require.Nil(s.T(), err)
 }
 
@@ -75,7 +75,7 @@ func (s *CommandTestSuite) TestUpdate() {
 	require.Nil(s.T(), err)
 	err = updatedProject.Update()
 	require.Nil(s.T(), err)
-	err = project.Down(true)
+	err = project.Down(true, true)
 	require.Nil(s.T(), err)
 }
 
@@ -107,7 +107,7 @@ func (s *CommandTestSuite) TestUpgrade() {
 	require.Nil(s.T(), err)
 	err = Wait(namespace, context, kubeConfig, "job", "success", 60)
 	require.Nil(s.T(), err)
-	err = project.Down(true)
+	err = project.Down(true, true)
 	require.Nil(s.T(), err)
 }
 
@@ -138,7 +138,7 @@ func (s *CommandTestSuite) TestWaitPod() {
 	})
 	err = Wait(namespace, context, kubeConfig, "pod", "pod2", 300)
 	require.Nil(s.T(), err)
-	err = p.Down(true)
+	err = p.Down(true, true)
 	require.Nil(s.T(), err)
 }
 
@@ -169,7 +169,7 @@ func (s *CommandTestSuite) TestWaitJob() {
 	})
 	err = Wait(namespace, context, kubeConfig, "job", "job2", 300)
 	require.Nil(s.T(), err)
-	err = p.Down(true)
+	err = p.Down(true, true)
 	require.Nil(s.T(), err)
 }
 
@@ -201,7 +201,7 @@ func (s *CommandTestSuite) TestJobWaitTimeoutInProject() {
 	require.NotNil(s.T(), err)
 	_, ok := stacktrace.RootCause(err).(ErrWaitTimeout)
 	require.True(s.T(), ok)
-	err = p.Down(true)
+	err = p.Down(true, true)
 	require.Nil(s.T(), err)
 }
 
@@ -222,7 +222,7 @@ func (s *CommandTestSuite) TestJobWaitFailedInProject() {
 	require.NotNil(s.T(), err)
 	_, ok := stacktrace.RootCause(err).(ErrWaitFailed)
 	require.True(s.T(), ok)
-	err = p.Down(true)
+	err = p.Down(true, true)
 	require.Nil(s.T(), err)
 }
 
@@ -243,7 +243,7 @@ func (s *CommandTestSuite) TestPodWaitTimeoutInProject() {
 	require.NotNil(s.T(), err)
 	_, ok := stacktrace.RootCause(err).(ErrWaitTimeout)
 	require.True(s.T(), ok)
-	err = p.Down(true)
+	err = p.Down(true, true)
 	require.Nil(s.T(), err)
 }
 
@@ -264,7 +264,7 @@ func (s *CommandTestSuite) TestPodWaitFailedInProject() {
 	require.NotNil(s.T(), err)
 	_, ok := stacktrace.RootCause(err).(ErrWaitFailed)
 	require.True(s.T(), ok)
-	err = p.Down(true)
+	err = p.Down(true, true)
 	require.Nil(s.T(), err)
 }
 

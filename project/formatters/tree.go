@@ -7,10 +7,18 @@ import (
 	"github.com/anduintransaction/rivendell/project"
 )
 
-type TreeFormatter struct{}
+type TreeFormatterOptions struct {
+	PrintResource bool
+}
 
-func NewTreeFormatter() *TreeFormatter {
-	return &TreeFormatter{}
+type TreeFormatter struct {
+	opts *TreeFormatterOptions
+}
+
+func NewTreeFormatter(opts *TreeFormatterOptions) *TreeFormatter {
+	return &TreeFormatter{
+		opts: opts,
+	}
 }
 
 func (f *TreeFormatter) Format(p *project.Project) {
@@ -21,6 +29,13 @@ func (f *TreeFormatter) Format(p *project.Project) {
 		fmt.Fprintf(out, "- Group: %s\n", g.Name)
 		for _, rf := range g.ResourceFiles {
 			fmt.Fprintf(out, "  - File: %s\n", rf.Source)
+			if !f.opts.PrintResource {
+				continue
+			}
+
+			for _, r := range rf.Resources {
+				fmt.Fprintf(out, "    - Resource: %s/%s\n", r.Kind, r.Name)
+			}
 		}
 		for _, rd := range g.Depend {
 			fmt.Fprintf(out, "  - Dep: %s\n", rd)
