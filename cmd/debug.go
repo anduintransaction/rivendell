@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/anduintransaction/rivendell/project"
-	"github.com/anduintransaction/rivendell/project/filters"
+	pfilters "github.com/anduintransaction/rivendell/project/filters"
 	"github.com/anduintransaction/rivendell/project/formatters"
 	"github.com/anduintransaction/rivendell/utils"
 	"github.com/spf13/cobra"
@@ -27,8 +27,8 @@ import (
 
 var (
 	outputFormat       string
-	filterGroups       []string
-	filterGroupsRegex  string
+	filterGroup        string
+	filterExact        bool
 	debugPrintResource bool
 )
 
@@ -45,23 +45,8 @@ var debugCmd = &cobra.Command{
 		}
 
 		var filterFns []project.FilterFunc
-
-		if len(filterGroups) > 0 {
-			filterFns = append(filterFns, filters.FilterBySlice(filterGroups))
-		}
-
-		var filterPattern *regexp.Regexp
-		if fgr := strings.TrimSpace(filterGroupsRegex); fgr != "" {
-			filterPattern, err = regexp.Compile(fgr)
-			if err != nil {
-				utils.Warn("Invalid filter group regex. Ignore pattern")
-			}
-			if filterPattern != nil {
-				filterFns = append(filterFns, filters.FilterByRegex(filterPattern))
-			}
-		}
-
-		p.SetFilter(filters.CombineFilter(filterFns...))
+		addFilterRegex(&filterFns)
+		p.SetFilter(pfilters.CombineFilter(filterFns...))
 
 		var formatter project.Formatter
 		switch strings.ToLower(outputFormat) {
@@ -84,11 +69,30 @@ var debugCmd = &cobra.Command{
 	},
 }
 
+func addFilterRegex(filters *[]project.FilterFunc) {
+	p := strings.TrimSpace(filterGroup)
+	if p == "" {
+		return
+	}
+	if filterExact && !strings.HasPrefix("^", p) {
+		p = "^" + p
+	}
+	if filterExact && !strings.HasSuffix("$", p) {
+		p = p + "$"
+	}
+	rexp, err := regexp.Compile(p)
+	if err != nil {
+		utils.Warn("Invalid filter group pattern. Ignoring filter")
+		return
+	}
+	*filters = append(*filters, pfilters.FilterByRegex(rexp))
+}
+
 func init() {
 	RootCmd.AddCommand(debugCmd)
 
 	debugCmd.Flags().StringVarP(&outputFormat, "output", "o", "console", "print format. One of: console|yaml|tree|config")
-	debugCmd.Flags().StringSliceVar(&filterGroups, "filter-groups", []string{}, "Only print resource groups")
-	debugCmd.Flags().StringVar(&filterGroupsRegex, "filter-groups-regex", "", "Only print resource groups matching pattern")
+	debugCmd.Flags().StringVar(&filterGroup, "filter-group", "", "Only print resource groups")
+	debugCmd.Flags().BoolVar(&filterExact, "exact", false, "Filter group by exact match")
 	debugCmd.Flags().BoolVar(&debugPrintResource, "print-resource", false, "Print resource in tree format")
 }
