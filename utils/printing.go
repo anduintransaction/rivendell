@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"io"
 	"os"
 	"strings"
 
@@ -8,24 +9,44 @@ import (
 	"github.com/palantir/stacktrace"
 )
 
+// Infof .
+func Infof(out io.Writer, msg string, args ...interface{}) {
+	color.New(color.FgBlue).Fprintf(out, appendNewLine(msg), args...)
+}
+
 // Info .
 func Info(msg string, args ...interface{}) {
-	color.New(color.FgBlue).Printf(appendNewLine(msg), args...)
+	Infof(os.Stdout, msg, args...)
+}
+
+// Infof2 .
+func Infof2(out io.Writer, msg string, args ...interface{}) {
+	color.New(color.FgCyan).Fprintf(out, appendNewLine(msg), args...)
 }
 
 // Info2 .
 func Info2(msg string, args ...interface{}) {
-	color.New(color.FgCyan).Printf(appendNewLine(msg), args...)
+	Infof2(os.Stdout, msg, args...)
+}
+
+// Warnf .
+func Warnf(out io.Writer, msg string, args ...interface{}) {
+	color.New(color.FgYellow).Fprintf(out, appendNewLine(msg), args...)
 }
 
 // Warn .
 func Warn(msg string, args ...interface{}) {
-	color.New(color.FgYellow).Printf(appendNewLine(msg), args...)
+	Warnf(os.Stdout, msg, args...)
+}
+
+// Successf .
+func Successf(out io.Writer, msg string, args ...interface{}) {
+	color.New(color.FgGreen).Fprintf(out, appendNewLine(msg), args...)
 }
 
 // Success .
 func Success(msg string, args ...interface{}) {
-	color.New(color.FgGreen).Printf(appendNewLine(msg), args...)
+	Successf(os.Stdout, msg, args...)
 }
 
 // Error .

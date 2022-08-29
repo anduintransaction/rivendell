@@ -184,9 +184,10 @@ func (p *Project) Restart(pods []string) error {
 
 // PrintCommonInfo .
 func (p *Project) PrintCommonInfo() {
-	utils.Info("Using namespace %q", p.namespace)
-	utils.Info("Using context %q", p.context)
-	utils.Info("Using kubernetes config file %q", p.kubeConfig)
+	out := os.Stderr
+	utils.Infof(out, "Using namespace %q", p.namespace)
+	utils.Infof(out, "Using context %q", p.context)
+	utils.Infof(out, "Using kubernetes config file %q", p.kubeConfig)
 }
 
 func (p *Project) PrintConfig() {
