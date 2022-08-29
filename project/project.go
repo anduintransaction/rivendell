@@ -90,12 +90,17 @@ func (p *Project) Up() error {
 }
 
 // Down .
-func (p *Project) Down(deleteNS bool) error {
+func (p *Project) Down(deleteNS, deletePVC bool) error {
 	kubeContext, err := kubernetes.NewContext(p.namespace, p.context, p.kubeConfig)
 	if err != nil {
 		return err
 	}
 	err = p.resourceGraph.WalkResourceBackward(func(r *Resource, g *ResourceGroup) error {
+		kind := strings.ToLower(r.Kind)
+		isPVC := kind == "persistentvolumeclaim" || kind == "pvc"
+		if !deletePVC && isPVC {
+			return nil
+		}
 		return p.deleteResource(kubeContext, g, r)
 	}, func(r *Resource, g *ResourceGroup) error {
 		return p.waitForDeleted(kubeContext, r)

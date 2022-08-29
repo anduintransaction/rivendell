@@ -22,7 +22,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var nsDown bool
+var (
+	nsDown  bool
+	pvcDown bool
+)
 
 // downCmd represents the down command
 var downCmd = &cobra.Command{
@@ -47,7 +50,7 @@ var downCmd = &cobra.Command{
 				os.Exit(0)
 			}
 		}
-		err = p.Down(nsDown)
+		err = p.Down(nsDown, pvcDown)
 		if err != nil {
 			utils.Fatal(err)
 		}
@@ -58,4 +61,5 @@ func init() {
 	RootCmd.AddCommand(downCmd)
 
 	downCmd.Flags().BoolVar(&nsDown, "ns", true, "Also remove namespace")
+	downCmd.Flags().BoolVar(&pvcDown, "pvc", true, "Also remove pvc")
 }
