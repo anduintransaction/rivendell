@@ -37,7 +37,9 @@ func ExecuteTemplateContent(rootDir string, content []byte, variables map[string
 	cwdStack.Push(rootDir)
 	defer cwdStack.Pop()
 
-	contentWithEnvExpand := ExpandEnv(string(content))
+	// dont expand env due to conflicting K8s syntax
+	// Ref: https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/#using-environment-variables-inside-of-your-config
+	// contentWithEnvExpand := ExpandEnv(string(content))
 	tmpl, err := template.
 		New("template").
 		Funcs(sprig.TxtFuncMap()).
@@ -51,7 +53,7 @@ func ExecuteTemplateContent(rootDir string, content []byte, variables map[string
 			"asGenericMap": asGenericMap,
 			"asMapString":  asMapString,
 		}).
-		Parse(contentWithEnvExpand)
+		Parse(string(content))
 	if err != nil {
 		return nil, stacktrace.Propagate(err, "cannot parse template")
 	}
