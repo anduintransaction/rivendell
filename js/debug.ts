@@ -1,4 +1,4 @@
-import { Context, DryRunnner, Module, ModuleGraph, Planner } from "./src";
+import { Context, KubeRunner, Module, ModuleGraph, Planner } from "./src";
 
 const modules: Module[] = [
   new Module("redis", {
@@ -124,5 +124,5 @@ const plan = planner.planFromGraph(graph);
 Planner.show(plan);
 console.log("");
 
-const runner = new DryRunnner();
+const runner = new KubeRunner();
 runner.run(plan);

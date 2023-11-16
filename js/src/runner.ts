@@ -1,5 +1,4 @@
 import { DeployStep, Plan, WaitStep } from "./common";
-import { kubectlRun } from "./utils";
 import yaml from "yaml";
 import chalk from "chalk";
 
@@ -21,7 +20,7 @@ export abstract class Runner implements WaitRunner, DeployRunner {
       switch (step.type) {
         case "wait": {
           const msg =
-            `Started to wait for "${step.wait.kind}/${step.wait.name}" in module {${step.module}}`;
+            `Started to wait for "${step.wait.kind}/${step.wait.name}" in module "${step.module}"`;
           console.log(chalk.yellow(msg));
           await this.wait(step);
           console.log(chalk.green("====> Success"));
@@ -50,16 +49,108 @@ export class NoopRunner extends Runner {
   }
 }
 
-export class DryRunnner extends Runner {
-  wait(_: WaitStep): Promise<void> {
-    return Promise.resolve();
+export class KubeRunner extends Runner {
+  kubeCtx: string;
+  dryRun: boolean;
+  namespace: string;
+
+  constructor(
+    kubeCtx: string = "",
+    namespace: string = "default",
+    dryRun: boolean = false,
+  ) {
+    super();
+    this.kubeCtx = kubeCtx;
+    this.namespace = namespace;
+    this.dryRun = dryRun;
+  }
+
+  commonArgs() {
+    const args = ["kubectl"];
+    if (this.kubeCtx !== "") args.push(`--context=${this.kubeCtx}`);
+    if (this.namespace !== "") args.push(`--namespace=${this.namespace}`);
+    return args;
+  }
+
+  waitForJob(name: string, timeout?: number): Promise<void> {
+    const args = [...this.commonArgs(), "wait"];
+    if (timeout !== undefined && timeout) {
+      args.push(`--timeout=${timeout!}s`);
+    }
+
+    // try to wait for both condition
+    return new Promise((resolve, reject) => {
+      Bun.spawn([...args, "--for=condition=complete", `job/${name}`], {
+        stdout: "ignore",
+        stderr: "ignore",
+        onExit(_, exitCode, __, ___) {
+          exitCode === 0 ? resolve() : reject();
+        },
+      });
+
+      Bun.spawn([...args, "--for=condition=failed", `job/${name}`], {
+        stdout: "ignore",
+        stderr: "ignore",
+        onExit(_, exitCode, __, ___) {
+          exitCode === 0 ? reject() : resolve();
+        },
+      });
+    });
+  }
+
+  async waitForRollout(name: string, kind: string, timeout?: number) {
+    const args = [...this.commonArgs(), "rollout", "status"];
+    if (timeout !== undefined && timeout) {
+      args.push(`--timeout=${timeout!}s`);
+    }
+    args.push(`${kind}/${name}`);
+    const child = Bun.spawn(args, { stdout: "ignore", stderr: "ignore" });
+    const code = await child.exited;
+    if (code !== 0) {
+      throw new Error(`exited with code ${code}`);
+    }
+  }
+
+  async wait(w: WaitStep) {
+    if (this.dryRun) return;
+
+    switch (w.wait.kind.toLowerCase()) {
+      case "job": {
+        await this.waitForJob(w.wait.name, w.wait.timeout);
+        break;
+      }
+
+      case "deployment":
+      case "statefulset": {
+        await this.waitForRollout(w.wait.name, w.wait.kind, w.wait.timeout);
+        break;
+      }
+
+      default: {
+        const msg =
+          `Dont know how to wait on object kind "${w.wait.kind}. Skipping"`;
+        console.log(chalk.magenta(msg));
+        break;
+      }
+    }
   }
 
   async deploy(step: DeployStep) {
-    const child = kubectlRun(["apply", "-f", "-", "--dry-run=server"]);
+    const args = this.commonArgs();
+    args.push("apply", "-f", "-");
+    if (this.dryRun) {
+      args.push("--dry-run=server");
+    }
+
+    const child = Bun.spawn(args, {
+      stdin: "pipe",
+      stdout: "inherit",
+      stderr: "inherit",
+    });
     const manifest = yaml.stringify(step.object);
     const enc = new TextEncoder();
     child.stdin.write(enc.encode(manifest));
+    child.stdin.end();
     const code = await child.exited;
     if (code !== 0) {
       throw new Error(`exited with code ${code}`);
