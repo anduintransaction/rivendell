@@ -55,22 +55,13 @@ export class DryRunnner extends Runner {
     return Promise.resolve();
   }
 
-  deploy(step: DeployStep): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const child = kubectlRun({
-        args: ["apply", "-f", "-", "--dry-run=server"],
-      });
-      const manifest = yaml.stringify(step.object);
-      const buf = Buffer.from(manifest);
-      child.stdin.write(buf);
-      child.stdin.end();
-      child.on("exit", (code) => {
-        if (code === 0) {
-          resolve();
-        } else {
-          reject(`exit with status ${code}`);
-        }
-      });
-    });
+  async deploy(step: DeployStep) {
+    const child = kubectlRun(["apply", "-f", "-", "--dry-run=server"]);
+    const manifest = yaml.stringify(step.object);
+    child.stdin.write(manifest);
+    const code = await child.exited;
+    if (code !== 0) {
+      throw new Error(`exited with code ${code}`);
+    }
   }
 }

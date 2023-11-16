@@ -1,4 +1,4 @@
-import { spawn, SpawnOptionsWithoutStdio } from "child_process";
+import { SpawnOptions, Subprocess } from "bun";
 
 export function prefixMultiline(s: string, pad: string): string {
   return s
@@ -7,19 +7,17 @@ export function prefixMultiline(s: string, pad: string): string {
     .join("\n");
 }
 
-export interface RunOpts extends SpawnOptionsWithoutStdio {
-  args: string[];
-}
-
 export const KUBECTL_BIN = "kubectl";
 
-export function kubectlRun(opts: RunOpts) {
-  const { args, ...rest } = opts;
-  const child = spawn(KUBECTL_BIN, args, {
-    ...rest,
-    stdio: "pipe",
+export function kubectlRun(
+  args: string[],
+  opts?: SpawnOptions.OptionsObject<"pipe", "inherit", "inherit">,
+): Subprocess<"pipe", "inherit", "inherit"> {
+  const child = Bun.spawn([KUBECTL_BIN, ...args], {
+    ...opts,
+    stdin: "pipe",
+    stdout: "inherit",
+    stderr: "inherit",
   });
-  child.stdout.pipe(process.stdout);
-  child.stderr.pipe(process.stderr);
   return child;
 }

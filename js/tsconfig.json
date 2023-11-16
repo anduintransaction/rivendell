@@ -1,12 +1,24 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "module": "commonjs",
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
+    "types": ["bun-types"],
+    "baseUrl": "./src",
+
+    "lib": ["ESNext"],
+    "module": "ESNext",
+    "target": "ESNext",
+
+    "moduleResolution": "bundler",
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "allowImportingTsExtensions": true,
+    "moduleDetection": "force",
+
     "strict": true,
-    "lib": ["ES2017"],
-    "skipLibCheck": true
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "composite": true,
+    "downlevelIteration": true,
+    "allowSyntheticDefaultImports": true
   },
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist"]
 }
