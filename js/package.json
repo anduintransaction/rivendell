@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anduintransaction/rivendell"
+    "url": "git+https://github.com/anduintransaction/rivendell"
   },
   "description": "A kubernetes DAG deployment tool",
   "main": "dist/index.min.js",
