@@ -1,13 +1,9 @@
 export class Context {
-  configs: Record<string, any>;
+  configs: any;
 
   static Empty = new Context({});
 
-  constructor(configs: Record<string, any>) {
+  constructor(configs: any) {
     this.configs = configs;
-  }
-
-  merge(that: Context): Context {
-    return new Context(Object.assign({}, this.configs, that.configs));
   }
 }

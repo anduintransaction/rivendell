@@ -58,7 +58,8 @@ export class DryRunnner extends Runner {
   async deploy(step: DeployStep) {
     const child = kubectlRun(["apply", "-f", "-", "--dry-run=server"]);
     const manifest = yaml.stringify(step.object);
-    child.stdin.write(manifest);
+    const enc = new TextEncoder();
+    child.stdin.write(enc.encode(manifest));
     const code = await child.exited;
     if (code !== 0) {
       throw new Error(`exited with code ${code}`);

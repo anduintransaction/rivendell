@@ -8,7 +8,6 @@
     "target": "ESNext",
 
     "moduleResolution": "bundler",
-    "emitDeclarationOnly": true,
     "declaration": true,
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",

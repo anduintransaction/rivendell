@@ -1,25 +1,28 @@
 import path from "path";
-import { Generator } from "npm-dts";
+import { ELogLevel, Generator, INpmDtsArgs } from "npm-dts";
 
-const entryPoint = path.resolve(import.meta.dir, "./src/index.ts");
-const distDir = path.resolve(import.meta.dir, "./dist");
-const packageJsonFile = path.resolve(import.meta.dir, "./package.json");
+const entryPoint = path.join(import.meta.dir, "./src/index.ts");
+const distDir = path.join(import.meta.dir, "./dist");
+const pkgJson = path.join(import.meta.dir, "./package.json");
 
-const pkgJson = JSON.parse(await Bun.file(packageJsonFile).text());
-const { dependencies, peerDependencies } = pkgJson;
+(async () => {
+  const { dependencies, peerDependencies } = await import(pkgJson);
+  await Bun.build({
+    entrypoints: [entryPoint],
+    sourcemap: "none",
+    minify: false,
+    target: "bun",
+    external: [
+      ...Object.keys(dependencies || {}),
+      ...Object.keys(peerDependencies || {}),
+    ],
+    outdir: distDir,
+  });
 
-const isCI = (process.env.CI || "false").toLowerCase() === "true";
-
-Bun.build({
-  entrypoints: [entryPoint],
-  sourcemap: "external",
-  minify: isCI,
-  target: "bun",
-  external: [...Object.keys(dependencies), ...Object.keys(peerDependencies)],
-  outdir: distDir,
-});
-
-new Generator({
-  entry: entryPoint,
-  output: path.join(distDir, "index.d.ts"),
-}).generate();
+  const generatorOpts: INpmDtsArgs = {
+    entry: entryPoint,
+    output: path.join(distDir, "index.d.ts"),
+    logLevel: ELogLevel.warn,
+  };
+  await new Generator(generatorOpts, true, true).generate();
+})();

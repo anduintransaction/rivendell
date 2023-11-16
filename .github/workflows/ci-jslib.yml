@@ -37,4 +37,5 @@ jobs:
       - name: Run test
         run: |
           cd ./js
+          bun run check
           bun test

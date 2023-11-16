@@ -1,6 +1,6 @@
 {
   "name": "@anduintransaction/rivendell",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/anduintransaction/rivendell.git"
@@ -14,7 +14,8 @@
   "scripts": {
     "debug": "bun run ./debug.ts",
     "clean": "rm -rf ./dist",
-    "prebuild": "npm run clean",
+    "check": "tsc --noEmit",
+    "prebuild": "bun run check && bun run clean",
     "build": "bun ./build.ts"
   },
   "author": "tuanvuong@anduintransact.com",
