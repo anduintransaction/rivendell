@@ -1,6 +1,6 @@
 import * as yaml from "yaml";
 import chalk, {} from "chalk";
-import { Plan } from "./common";
+import { DeployStep, Plan } from "./common";
 import { Context } from "./context";
 import { Module } from "./module";
 import { ModuleGraph, Walker } from "./graph";
@@ -25,6 +25,13 @@ export class Planner {
       plan.push(...subPlan);
     });
     return plan;
+  }
+
+  static showManifests(plan: Plan) {
+    const manifests = plan
+      .filter((p) => p.type === "deploy")
+      .map((p) => yaml.stringify((p as DeployStep).object).trim());
+    console.log(manifests.join("\n---\n"));
   }
 
   static show(plan: Plan, verbose: boolean = false) {
