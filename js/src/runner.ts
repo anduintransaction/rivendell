@@ -1,6 +1,7 @@
-import { DeployStep, Plan, WaitStep } from "./common";
+import { Subprocess } from "bun";
 import yaml from "yaml";
 import chalk from "chalk";
+import { DeployStep, Plan, WaitStep } from "./common";
 
 export interface WaitRunner {
   wait(step: WaitStep): Promise<void>;
@@ -72,39 +73,52 @@ export class KubeRunner extends Runner {
     return args;
   }
 
-  waitForJob(name: string, timeout?: number): Promise<void> {
+  async waitForJob(name: string, timeout: number = 300) {
     const args = [...this.commonArgs(), "wait"];
-    if (timeout !== undefined && timeout) {
-      args.push(`--timeout=${timeout!}s`);
-    }
+    args.push(`--timeout=${timeout}s`);
 
     // try to wait for both condition
-    return new Promise((resolve, reject) => {
-      Bun.spawn([...args, "--for=condition=complete", `job/${name}`], {
-        stdout: "ignore",
-        stderr: "ignore",
-        onExit(_, exitCode, __, ___) {
-          exitCode === 0 ? resolve() : reject();
-        },
-      });
+    const children: Subprocess[] = [];
+    return new Promise<void>((resolve, reject) => {
+      children.push(
+        Bun.spawn([...args, "--for=condition=complete", `job/${name}`], {
+          stdout: "inherit",
+          stderr: "inherit",
+          onExit(_, exitCode, __, ___) {
+            if (exitCode === 0) {
+              resolve();
+            } else {
+              reject(`job "${name}" failed`);
+            }
+          },
+        }),
+      );
 
-      Bun.spawn([...args, "--for=condition=failed", `job/${name}`], {
-        stdout: "ignore",
-        stderr: "ignore",
-        onExit(_, exitCode, __, ___) {
-          exitCode === 0 ? reject() : resolve();
-        },
+      children.push(
+        Bun.spawn([...args, "--for=condition=failed", `job/${name}`], {
+          stdout: "inherit",
+          stderr: "inherit",
+          onExit(_, exitCode, __, ___) {
+            if (exitCode === 0) {
+              reject(`job "${name}" failed`);
+            } else {
+              resolve();
+            }
+          },
+        }),
+      );
+    }).finally(() => {
+      children.forEach((p) => {
+        if (p.exitCode === null) p.kill();
       });
     });
   }
 
-  async waitForRollout(name: string, kind: string, timeout?: number) {
+  async waitForRollout(name: string, kind: string, timeout: number = 300) {
     const args = [...this.commonArgs(), "rollout", "status"];
-    if (timeout !== undefined && timeout) {
-      args.push(`--timeout=${timeout!}s`);
-    }
+    args.push(`--timeout=${timeout}s`);
     args.push(`${kind}/${name}`);
-    const child = Bun.spawn(args, { stdout: "ignore", stderr: "ignore" });
+    const child = Bun.spawn(args, { stdout: "inherit" });
     const code = await child.exited;
     if (code !== 0) {
       throw new Error(`exited with code ${code}`);
@@ -135,8 +149,18 @@ export class KubeRunner extends Runner {
     }
   }
 
+  async deleteJob(name: string) {
+    const args = this.commonArgs();
+    args.push("delete", "jobs", name, "--ignore-not-found");
+    await Bun.spawn(args, { stdin: "ignore", stdout: "inherit" }).exited;
+  }
+
   async deploy(step: DeployStep) {
     const args = this.commonArgs();
+    if (step.object.kind.toLowerCase() === "job") {
+      await this.deleteJob(step.object.metadata?.name!);
+    }
+
     args.push("apply", "-f", "-");
     if (this.dryRun) {
       args.push("--dry-run=server");
