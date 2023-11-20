@@ -119,7 +119,7 @@ const graph = ModuleGraph.resolve(...modules);
 graph.show();
 console.log("");
 
-const planner = new Planner(Context.Empty);
+const planner = new Planner(new Context());
 const plan = planner.planFromGraph(graph);
 Planner.show(plan);
 console.log("");

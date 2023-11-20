@@ -1,9 +1,9 @@
 export class Context {
   configs: any;
+  secrets: any;
 
-  static Empty = new Context({});
-
-  constructor(configs: any) {
+  constructor(configs: any = {}, secrets: any = {}) {
     this.configs = configs;
+    this.secrets = secrets;
   }
 }
