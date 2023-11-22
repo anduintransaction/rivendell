@@ -3,8 +3,15 @@ import { SecretProvider } from "../context";
 
 export class InfisicalSecretProvider implements SecretProvider {
   client: InfisicalClient;
+  forceEnv: string | undefined;
 
-  constructor(siteURL: string, token: string, debug: boolean = false) {
+  constructor(
+    siteURL: string,
+    token: string,
+    debug: boolean = false,
+    forceEnv?: string,
+  ) {
+    this.forceEnv = forceEnv;
     this.client = new InfisicalClient({
       token: token,
       siteURL: siteURL,
@@ -12,11 +19,15 @@ export class InfisicalSecretProvider implements SecretProvider {
     });
   }
 
+  getTargetEnv(env: string): string {
+    return this.forceEnv || env;
+  }
+
   async get(env: string, name: string) {
     const parts = name.split("/");
     const [secretName, ...paths] = parts.reverse();
     const secret = await this.client.getSecret(secretName, {
-      environment: env,
+      environment: this.getTargetEnv(env),
       path: `/${paths.reverse().join("/")}`,
       type: "shared",
     });
@@ -28,7 +39,7 @@ export class InfisicalSecretProvider implements SecretProvider {
 
   async getPrefix(env: string, prefix: string) {
     const secrets = await this.client.getAllSecrets({
-      environment: env,
+      environment: this.getTargetEnv(env),
       path: `/${prefix}`,
       attachToProcessEnv: false,
       includeImports: false,
