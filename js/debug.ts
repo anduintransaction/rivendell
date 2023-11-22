@@ -2,7 +2,9 @@ import { Context, KubeRunner, Module, ModuleGraph, Planner } from "./src";
 
 const modules: Module[] = [
   new Module("redis", {
-    generator: (_: Context) => {
+    generator: async (_: Context) => {
+      console.log("generating redis");
+      await Bun.sleep(1000);
       return [
         {
           apiVersion: "apps/v1",
@@ -23,7 +25,9 @@ const modules: Module[] = [
   }),
 
   new Module("foundationdb", {
-    generator: (_: Context) => {
+    generator: async (_: Context) => {
+      console.log("generating fdb");
+      await Bun.sleep(1000);
       return [
         {
           apiVersion: "apps/v1",
@@ -45,7 +49,7 @@ const modules: Module[] = [
 
   new Module("wait-stargazer", {
     deps: ["redis", "foundationdb"],
-    generator: (_: Context) => {
+    generator: async (_: Context) => {
       return [
         {
           apiVersion: "batch/v1",
@@ -66,7 +70,7 @@ const modules: Module[] = [
         name: "wait-stargazer",
       },
     ],
-    generator: (_: Context) => {
+    generator: async (_: Context) => {
       return [
         {
           apiVersion: "apps/v1",
@@ -94,7 +98,7 @@ const modules: Module[] = [
         name: "wait-stargazer",
       },
     ],
-    generator: (_: Context) => {
+    generator: async (_: Context) => {
       return [
         {
           apiVersion: "apps/v1",
@@ -120,7 +124,7 @@ graph.show();
 console.log("");
 
 const planner = new Planner(new Context("local"));
-const plan = planner.planFromGraph(graph);
+const plan = await planner.planFromGraph(graph);
 Planner.show(plan);
 console.log("");
 

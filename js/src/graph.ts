@@ -46,21 +46,17 @@ export class ModuleGraph {
       throw new Error("Cyclic detected in graph. No root node exists");
     }
 
-    for (const r of this.roots) {
-      Walker.dfs(
-        this,
-        (m: Module, _: number, visited: Record<string, boolean>) => {
-          const children = this.children[m.name];
-          for (const child of children) {
-            if (visited[child]) {
-              throw new Error(
-                `cyclic detected in graph. Path started at ${r}`,
-              );
-            }
+    for (const candidate of this.roots) {
+      for (const item of Walker.dfs(this, candidate)) {
+        const children = this.children[item.m.name];
+        for (const child of children) {
+          if (item.visited[child]) {
+            throw new Error(
+              `cyclic detected in graph. Path started at ${candidate}`,
+            );
           }
-        },
-        r,
-      );
+        }
+      }
     }
   }
 
@@ -99,16 +95,14 @@ interface ItWalker {
   depth: number;
 }
 
+interface WalkerItem {
+  m: Module;
+  depth: number;
+  visited: Record<string, boolean>;
+}
+
 export const Walker = {
-  bfs(
-    graph: ModuleGraph,
-    fn: (
-      m: Module,
-      depth: number,
-      visited: Record<string, boolean>,
-    ) => void,
-    startNode?: string,
-  ) {
+  *bfs(graph: ModuleGraph, startNode?: string) {
     const queue: ItWalker[] = !!startNode
       ? [{ name: startNode!, depth: 0 }]
       : graph.roots.map((m) => ({ name: m, depth: 0 }));
@@ -122,7 +116,13 @@ export const Walker = {
       if (visited[it.name]) continue;
 
       visited[it.name] = true;
-      fn(graph.modules[it.name], it.depth, Object.assign({}, visited));
+      const item: WalkerItem = {
+        m: graph.modules[it.name],
+        depth: it.depth,
+        visited: Object.assign({}, visited),
+      };
+      yield item;
+
       const nonVisitedChildrens: ItWalker[] = graph
         .children[it.name]
         .filter((m) => !visited[m])
@@ -131,13 +131,8 @@ export const Walker = {
     }
   },
 
-  dfs(
+  *dfs(
     graph: ModuleGraph,
-    fn: (
-      m: Module,
-      depth: number,
-      visited: Record<string, boolean>,
-    ) => void,
     startNode?: string,
   ) {
     const stack: ItWalker[] = !!startNode
@@ -153,7 +148,13 @@ export const Walker = {
       if (visited[it.name]) continue;
 
       visited[it.name] = true;
-      fn(graph.modules[it.name], it.depth, Object.assign({}, visited));
+      const item: WalkerItem = {
+        m: graph.modules[it.name],
+        depth: it.depth,
+        visited: Object.assign({}, visited),
+      };
+      yield item;
+
       const nonVisitedChildrens: ItWalker[] = graph
         .children[it.name]
         .filter((m) => !visited[m])

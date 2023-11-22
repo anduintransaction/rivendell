@@ -1,6 +1,6 @@
 import * as yaml from "yaml";
 import chalk, {} from "chalk";
-import { DeployStep, Plan } from "./common";
+import { DeployStep, Plan, WaitStep } from "./common";
 import { Context } from "./context";
 import { Module } from "./module";
 import { ModuleGraph, Walker } from "./graph";
@@ -13,17 +13,32 @@ export class Planner {
     this.ctx = ctx;
   }
 
-  planFromModules(modules: Module[]): Plan {
+  async toPlan(m: Module): Promise<Plan> {
+    const objs = await m.generator(this.ctx);
+    const deploys: DeployStep[] = objs.map((obj) => ({
+      type: "deploy",
+      module: m.name,
+      object: obj,
+    }));
+    const waits: WaitStep[] = m.waits.map((wait) => ({
+      type: "wait",
+      module: m.name,
+      wait: wait,
+    }));
+    return [...waits, ...deploys];
+  }
+
+  planFromModules(modules: Module[]) {
     const graph = ModuleGraph.resolve(...modules);
     return this.planFromGraph(graph);
   }
 
-  planFromGraph(graph: ModuleGraph): Plan {
+  async planFromGraph(graph: ModuleGraph) {
     const plan: Plan = [];
-    Walker.bfs(graph, (m: Module) => {
-      const subPlan = m.toPlan(this.ctx);
+    for (const item of Walker.bfs(graph)) {
+      const subPlan = await this.toPlan(item.m);
       plan.push(...subPlan);
-    });
+    }
     return plan;
   }
 

@@ -1,8 +1,8 @@
-import { DeployStep, K8sObject, Plan, Wait, WaitStep } from "./common";
+import { K8sObject, Wait } from "./common";
 import { Context } from "./context";
 
 export interface SourceGenerator {
-  (ctx: Context): K8sObject[];
+  (ctx: Context): Promise<K8sObject[]>;
 }
 
 export interface ModuleOpts {
@@ -23,22 +23,7 @@ export class Module {
   ) {
     this.name = name;
     this.deps = [...(opts?.deps || [])].sort();
-    this.generator = opts?.generator || ((_) => []);
+    this.generator = opts?.generator || ((_) => Promise.resolve([]));
     this.waits = opts?.waits || [];
-  }
-
-  toPlan(ctx: Context): Plan {
-    const objs = this.generator(ctx);
-    const deploys: DeployStep[] = objs.map((obj) => ({
-      type: "deploy",
-      module: this.name,
-      object: obj,
-    }));
-    const waits: WaitStep[] = this.waits.map((wait) => ({
-      type: "wait",
-      module: this.name,
-      wait: wait,
-    }));
-    return [...waits, ...deploys];
   }
 }
