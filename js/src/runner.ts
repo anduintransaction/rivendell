@@ -52,7 +52,6 @@ export class NoopRunner extends Runner {
 
 export class KubeRunner extends Runner {
   kubeCtx: string;
-  dryRun: boolean;
   namespace: string;
 
   static KUBECTL_BIN = "kubectl";
@@ -60,12 +59,10 @@ export class KubeRunner extends Runner {
   constructor(
     kubeCtx: string = "",
     namespace: string = "default",
-    dryRun: boolean = false,
   ) {
     super();
     this.kubeCtx = kubeCtx;
     this.namespace = namespace;
-    this.dryRun = dryRun;
   }
 
   commonArgs() {
@@ -124,8 +121,6 @@ export class KubeRunner extends Runner {
   }
 
   async wait(w: WaitStep) {
-    if (this.dryRun) return;
-
     switch (w.wait.kind.toLowerCase()) {
       case "job": {
         await this.waitForJob(w.wait.name, w.wait.timeout);
@@ -162,10 +157,48 @@ export class KubeRunner extends Runner {
 
     const args = this.commonArgs();
     args.push("apply", "-f", "-");
-    if (this.dryRun) {
-      args.push("--dry-run=server");
+    const manifest = yaml.stringify(step.object);
+    execFileSync(KubeRunner.KUBECTL_BIN, args, {
+      input: manifest,
+      stdio: ["pipe", "inherit", "inherit"],
+    });
+  }
+}
+
+export class KubeDryrunRunner extends KubeRunner {
+  override async wait(_: WaitStep): Promise<void> {
+    return Promise.resolve();
+  }
+
+  override async deploy(step: DeployStep) {
+    if (step.object.kind.toLowerCase() === "job") {
+      // skip
+      return;
     }
 
+    const args = this.commonArgs();
+    args.push("apply", "--dry-run=server", "-f", "-");
+    const manifest = yaml.stringify(step.object);
+    execFileSync(KubeRunner.KUBECTL_BIN, args, {
+      input: manifest,
+      stdio: ["pipe", "inherit", "inherit"],
+    });
+  }
+}
+
+export class KubeDiffRunner extends KubeRunner {
+  override async wait(_: WaitStep): Promise<void> {
+    return Promise.resolve();
+  }
+
+  override async deploy(step: DeployStep) {
+    if (step.object.kind.toLowerCase() === "job") {
+      // skip
+      return;
+    }
+
+    const args = this.commonArgs();
+    args.push("diff", "-f", "-");
     const manifest = yaml.stringify(step.object);
     execFileSync(KubeRunner.KUBECTL_BIN, args, {
       input: manifest,
