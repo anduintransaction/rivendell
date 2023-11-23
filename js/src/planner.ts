@@ -1,11 +1,10 @@
 import * as yaml from "yaml";
+import chalk from "chalk";
 import { DeployStep, Plan, WaitStep } from "./common";
 import { Context } from "./context";
 import { Module } from "./module";
 import { ModuleGraph, Walker } from "./graph";
 import { prefixMultiline } from "./utils";
-
-const chalk = require("chalk");
 
 export class Planner {
   ctx: Context;

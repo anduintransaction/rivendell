@@ -1,8 +1,7 @@
 import yaml from "yaml";
+import chalk from "chalk";
 import { DeployStep, Plan, WaitStep } from "./common";
 import { ChildProcess, execFileSync, spawn } from "child_process";
-
-const chalk = require("chalk");
 
 export interface WaitRunner {
   wait(step: WaitStep): Promise<void>;

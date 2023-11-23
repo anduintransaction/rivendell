@@ -1,6 +1,6 @@
 {
   "name": "@anduintransaction/rivendell",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/anduintransaction/rivendell.git"
@@ -29,7 +29,7 @@
   "dependencies": {
     "@kubernetes-models/apimachinery": "^1.2.1",
     "@kubernetes-models/base": "^4.0.3",
-    "chalk": "^5.3.0",
+    "chalk": "^4.1.2",
     "infisical-node": "^1.5.0",
     "yaml": "^2.3.4"
   }
