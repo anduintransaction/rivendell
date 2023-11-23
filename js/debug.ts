@@ -1,10 +1,13 @@
 import { Context, KubeRunner, Module, ModuleGraph, Planner } from "./src";
 
+const sleep = (t: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, t));
+
 const modules: Module[] = [
   new Module("redis", {
     generator: async (_: Context) => {
       console.log("generating redis");
-      await Bun.sleep(1000);
+      await sleep(1000);
       return [
         {
           apiVersion: "apps/v1",
@@ -27,7 +30,7 @@ const modules: Module[] = [
   new Module("foundationdb", {
     generator: async (_: Context) => {
       console.log("generating fdb");
-      await Bun.sleep(1000);
+      await sleep(1000);
       return [
         {
           apiVersion: "apps/v1",
@@ -119,14 +122,18 @@ const modules: Module[] = [
   }),
 ];
 
-const graph = ModuleGraph.resolve(...modules);
-graph.show();
-console.log("");
+async function main() {
+  const graph = ModuleGraph.resolve(...modules);
+  graph.show();
+  console.log("");
 
-const planner = new Planner(new Context("local"));
-const plan = await planner.planFromGraph(graph);
-Planner.show(plan);
-console.log("");
+  const planner = new Planner(new Context("local"));
+  const plan = await planner.planFromGraph(graph);
+  Planner.show(plan);
+  console.log("");
 
-const runner = new KubeRunner();
-runner.run(plan);
+  const runner = new KubeRunner();
+  runner.run(plan);
+}
+
+main();

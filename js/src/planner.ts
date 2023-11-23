@@ -1,5 +1,5 @@
 import * as yaml from "yaml";
-import chalk, {} from "chalk";
+import chalk from "chalk";
 import { DeployStep, Plan, WaitStep } from "./common";
 import { Context } from "./context";
 import { Module } from "./module";

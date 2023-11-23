@@ -1,23 +1,25 @@
 {
   "compilerOptions": {
-    "types": ["bun-types"],
     "baseUrl": "./src",
-
-    "lib": ["ESNext"],
-    "module": "ESNext",
-    "target": "ESNext",
-
-    "moduleResolution": "bundler",
+    "types": [
+      "@types/node"
+    ],
+    "module": "CommonJS",
+    "target": "ES2022",
+    "moduleResolution": "node",
     "declaration": true,
-    "allowImportingTsExtensions": true,
     "moduleDetection": "force",
-
     "strict": true,
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true,
     "composite": true,
     "downlevelIteration": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true
   },
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "**/*.test.ts",
+    "node_modules",
+    "dist"
+  ]
 }

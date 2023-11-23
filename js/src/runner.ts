@@ -1,7 +1,7 @@
-import { Subprocess } from "bun";
 import yaml from "yaml";
 import chalk from "chalk";
 import { DeployStep, Plan, WaitStep } from "./common";
+import { ChildProcess, execFileSync, spawn } from "child_process";
 
 export interface WaitRunner {
   wait(step: WaitStep): Promise<void>;
@@ -55,6 +55,8 @@ export class KubeRunner extends Runner {
   dryRun: boolean;
   namespace: string;
 
+  static KUBECTL_BIN = "kubectl";
+
   constructor(
     kubeCtx: string = "",
     namespace: string = "default",
@@ -67,7 +69,7 @@ export class KubeRunner extends Runner {
   }
 
   commonArgs() {
-    const args = ["kubectl"];
+    const args = [];
     if (this.kubeCtx !== "") args.push(`--context=${this.kubeCtx}`);
     if (this.namespace !== "") args.push(`--namespace=${this.namespace}`);
     return args;
@@ -78,35 +80,33 @@ export class KubeRunner extends Runner {
     args.push(`--timeout=${timeout}s`);
 
     // try to wait for both condition
-    const children: Subprocess[] = [];
+    const children: ChildProcess[] = [];
     return new Promise<void>((resolve, reject) => {
-      children.push(
-        Bun.spawn([...args, "--for=condition=complete", `job/${name}`], {
-          stdout: "inherit",
-          stderr: "inherit",
-          onExit(_, exitCode, __, ___) {
-            if (exitCode === 0) {
-              resolve();
-            } else {
-              reject(`job "${name}" failed`);
-            }
-          },
-        }),
-      );
+      const completeArgs = [...args, "--for=condition=complete", `job/${name}`];
+      const c1 = spawn(KubeRunner.KUBECTL_BIN, completeArgs, {
+        stdio: ["ignore", "inherit", "inherit"],
+      });
+      c1.on("exit", (exitCode) => {
+        if (exitCode === 0) {
+          resolve();
+        } else {
+          reject(`job "${name}" failed`);
+        }
+      });
+      children.push(c1);
 
-      children.push(
-        Bun.spawn([...args, "--for=condition=failed", `job/${name}`], {
-          stdout: "inherit",
-          stderr: "inherit",
-          onExit(_, exitCode, __, ___) {
-            if (exitCode === 0) {
-              reject(`job "${name}" failed`);
-            } else {
-              resolve();
-            }
-          },
-        }),
-      );
+      const failedArgs = [...args, "--for=condition=failed", `job/${name}`];
+      const c2 = spawn(KubeRunner.KUBECTL_BIN, failedArgs, {
+        stdio: ["ignore", "inherit", "inherit"],
+      });
+      c2.on("exit", (exitCode) => {
+        if (exitCode === 0) {
+          reject(`job "${name}" failed`);
+        } else {
+          resolve();
+        }
+      });
+      children.push(c2);
     }).finally(() => {
       children.forEach((p) => {
         if (p.exitCode === null) p.kill();
@@ -114,15 +114,13 @@ export class KubeRunner extends Runner {
     });
   }
 
-  async waitForRollout(name: string, kind: string, timeout: number = 300) {
+  waitForRollout(name: string, kind: string, timeout: number = 300) {
     const args = [...this.commonArgs(), "rollout", "status"];
     args.push(`--timeout=${timeout}s`);
     args.push(`${kind}/${name}`);
-    const child = Bun.spawn(args, { stdout: "inherit" });
-    const code = await child.exited;
-    if (code !== 0) {
-      throw new Error(`exited with code ${code}`);
-    }
+    execFileSync(KubeRunner.KUBECTL_BIN, args, {
+      stdio: ["ignore", "inherit", "inherit"],
+    });
   }
 
   async wait(w: WaitStep) {
@@ -136,7 +134,7 @@ export class KubeRunner extends Runner {
 
       case "deployment":
       case "statefulset": {
-        await this.waitForRollout(w.wait.name, w.wait.kind, w.wait.timeout);
+        this.waitForRollout(w.wait.name, w.wait.kind, w.wait.timeout);
         break;
       }
 
@@ -149,35 +147,29 @@ export class KubeRunner extends Runner {
     }
   }
 
-  async deleteJob(name: string) {
+  deleteJob(name: string) {
     const args = this.commonArgs();
     args.push("delete", "jobs", name, "--ignore-not-found");
-    await Bun.spawn(args, { stdin: "ignore", stdout: "inherit" }).exited;
+    execFileSync(KubeRunner.KUBECTL_BIN, args, {
+      stdio: ["ignore", "inherit", "inherit"],
+    });
   }
 
   async deploy(step: DeployStep) {
-    const args = this.commonArgs();
     if (step.object.kind.toLowerCase() === "job") {
-      await this.deleteJob(step.object.metadata?.name!);
+      this.deleteJob(step.object.metadata?.name!);
     }
 
+    const args = this.commonArgs();
     args.push("apply", "-f", "-");
     if (this.dryRun) {
       args.push("--dry-run=server");
     }
 
-    const child = Bun.spawn(args, {
-      stdin: "pipe",
-      stdout: "inherit",
-      stderr: "inherit",
-    });
     const manifest = yaml.stringify(step.object);
-    const enc = new TextEncoder();
-    child.stdin.write(enc.encode(manifest));
-    child.stdin.end();
-    const code = await child.exited;
-    if (code !== 0) {
-      throw new Error(`exited with code ${code}`);
-    }
+    execFileSync(KubeRunner.KUBECTL_BIN, args, {
+      input: manifest,
+      stdio: ["pipe", "inherit", "inherit"],
+    });
   }
 }
