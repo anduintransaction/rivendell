@@ -172,8 +172,7 @@ export class KubeDryrunRunner extends KubeRunner {
 
   override async deploy(step: DeployStep) {
     if (step.object.kind.toLowerCase() === "job") {
-      // skip
-      return;
+      this.deleteJob(step.object.metadata?.name!);
     }
 
     const args = this.commonArgs();
@@ -200,9 +199,11 @@ export class KubeDiffRunner extends KubeRunner {
     const args = this.commonArgs();
     args.push("diff", "-f", "-");
     const manifest = yaml.stringify(step.object);
-    execFileSync(KubeRunner.KUBECTL_BIN, args, {
-      input: manifest,
-      stdio: ["pipe", "inherit", "inherit"],
-    });
+    try {
+      execFileSync(KubeRunner.KUBECTL_BIN, args, {
+        input: manifest,
+        stdio: ["pipe", "inherit", "inherit"],
+      });
+    } catch (err) { /* kubectl diff always throw error */ }
   }
 }
