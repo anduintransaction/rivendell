@@ -9,6 +9,7 @@ export function prefixMultiline(s: string, pad: string): string {
 
 export function toK8sYaml(obj: any): string {
   return yaml.stringify(obj, undefined, {
+    defaultKeyType: "PLAIN",
     defaultStringType: "QUOTE_DOUBLE",
   });
 }
