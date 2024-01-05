@@ -1,7 +1,7 @@
-import yaml from "yaml";
+import { ChildProcess, execFileSync, spawn } from "child_process";
 import chalk from "chalk";
 import { DeployStep, Plan, WaitStep } from "./common";
-import { ChildProcess, execFileSync, spawn } from "child_process";
+import { toK8sYaml } from "./utils";
 
 export interface WaitRunner {
   wait(step: WaitStep): Promise<void>;
@@ -157,7 +157,7 @@ export class KubeRunner extends Runner {
 
     const args = this.commonArgs();
     args.push("apply", "-f", "-");
-    const manifest = yaml.stringify(step.object);
+    const manifest = toK8sYaml(step.object);
     execFileSync(KubeRunner.KUBECTL_BIN, args, {
       input: manifest,
       stdio: ["pipe", "inherit", "inherit"],
@@ -177,7 +177,7 @@ export class KubeDryrunRunner extends KubeRunner {
 
     const args = this.commonArgs();
     args.push("apply", "--dry-run=server", "-f", "-");
-    const manifest = yaml.stringify(step.object);
+    const manifest = toK8sYaml(step.object);
     execFileSync(KubeRunner.KUBECTL_BIN, args, {
       input: manifest,
       stdio: ["pipe", "inherit", "inherit"],
@@ -198,7 +198,7 @@ export class KubeDiffRunner extends KubeRunner {
 
     const args = this.commonArgs();
     args.push("diff", "-f", "-");
-    const manifest = yaml.stringify(step.object);
+    const manifest = toK8sYaml(step.object);
     try {
       execFileSync(KubeRunner.KUBECTL_BIN, args, {
         input: manifest,

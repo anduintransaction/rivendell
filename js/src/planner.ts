@@ -1,10 +1,9 @@
-import * as yaml from "yaml";
 import chalk from "chalk";
 import { DeployStep, Plan, WaitStep } from "./common";
 import { Context } from "./context";
 import { Module } from "./module";
 import { ModuleGraph, Walker } from "./graph";
-import { prefixMultiline } from "./utils";
+import { prefixMultiline, toK8sYaml } from "./utils";
 
 export class Planner {
   ctx: Context;
@@ -45,7 +44,7 @@ export class Planner {
   static showManifests(plan: Plan) {
     const manifests = plan
       .filter((p) => p.type === "deploy")
-      .map((p) => yaml.stringify((p as DeployStep).object).trim());
+      .map((p) => toK8sYaml((p as DeployStep).object).trim());
     console.log(manifests.join("\n---\n"));
   }
 
@@ -59,7 +58,7 @@ export class Planner {
             `${step.module} | ${step.object.kind} / ${step.object.metadata?.name}`;
           console.log(`${action} ${msg}`);
           if (verbose) {
-            let manifest = prefixMultiline(yaml.stringify(step.object), "  ");
+            let manifest = prefixMultiline(toK8sYaml(step.object), "  ");
             console.log(chalk.grey(manifest));
           }
           break;
