@@ -1,21 +1,24 @@
-import InfisicalClient from "infisical-node";
+import { ClientSettings, InfisicalClient, LogLevel } from "@infisical/sdk";
 import { SecretProvider } from "../context";
+
+export interface InfisicalOpt extends ClientSettings {
+  projectId: string;
+  debug?: boolean;
+  forceEnv?: string;
+}
 
 export class InfisicalSecretProvider implements SecretProvider {
   client: InfisicalClient;
   forceEnv: string | undefined;
+  projectId: string;
 
-  constructor(
-    siteURL: string,
-    token: string,
-    debug: boolean = false,
-    forceEnv?: string,
-  ) {
+  constructor(opts: InfisicalOpt) {
+    const { projectId, debug, forceEnv, ...rest } = opts;
     this.forceEnv = forceEnv;
+    this.projectId = projectId;
     this.client = new InfisicalClient({
-      token: token,
-      siteURL: siteURL,
-      debug: debug,
+      ...rest,
+      logLevel: debug ? LogLevel.Debug : LogLevel.Warn,
     });
   }
 
@@ -26,7 +29,9 @@ export class InfisicalSecretProvider implements SecretProvider {
   async get(env: string, name: string) {
     const parts = name.split("/");
     const [secretName, ...paths] = parts.reverse();
-    const secret = await this.client.getSecret(secretName, {
+    const secret = await this.client.getSecret({
+      projectId: this.projectId,
+      secretName: secretName,
       environment: this.getTargetEnv(env),
       path: `/${paths.reverse().join("/")}`,
       type: "shared",
@@ -38,14 +43,15 @@ export class InfisicalSecretProvider implements SecretProvider {
   }
 
   async getPrefix(env: string, prefix: string) {
-    const secrets = await this.client.getAllSecrets({
+    const secrets = await this.client.listSecrets({
+      projectId: this.projectId,
       environment: this.getTargetEnv(env),
       path: `/${prefix}`,
       attachToProcessEnv: false,
       includeImports: false,
     });
     return secrets.map((s) => ({
-      name: s.secretName,
+      name: s.secretKey,
       value: s.secretValue,
     }));
   }
