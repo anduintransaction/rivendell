@@ -1,4 +1,4 @@
-import { ClientSettings, InfisicalClient, LogLevel } from "@infisical/sdk";
+import { ClientSettings, InfisicalClient } from "@infisical/sdk";
 import { SecretProvider } from "../context";
 
 export interface InfisicalOpt extends ClientSettings {
@@ -18,7 +18,7 @@ export class InfisicalSecretProvider implements SecretProvider {
     this.projectId = projectId;
     this.client = new InfisicalClient({
       ...rest,
-      logLevel: debug ? LogLevel.Debug : LogLevel.Warn,
+      logLevel: debug ? 1 : 3,
     });
   }
 
