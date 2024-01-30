@@ -26,4 +26,19 @@ export class Module {
     this.generator = opts?.generator || ((_) => Promise.resolve([]));
     this.waits = opts?.waits || [];
   }
+
+  clone(newOpts: ModuleOpts) {
+    return new Module(this.name, {
+      deps: newOpts.deps || this.deps,
+      generator: newOpts.generator || this.generator,
+      waits: newOpts.waits || this.waits,
+    });
+  }
+
+  cloneGeneratorOnly() {
+    return this.clone({
+      deps: [],
+      waits: [],
+    });
+  }
 }
