@@ -47,7 +47,7 @@ export class ModuleGraph {
     }
 
     for (const candidate of this.roots) {
-      for (const item of Walker.dfs(this, candidate)) {
+      for (const item of Walker.bfs(this, candidate)) {
         const children = this.children[item.m.name];
         for (const child of children) {
           if (item.visited[child]) {

@@ -66,4 +66,16 @@ describe("graph test", () => {
       ModuleGraph.resolve(...modules);
     }).toThrow();
   });
+
+  test("should not throw cyclic [1]", () => {
+    const modules: Module[] = [
+      new Module("l1"),
+      new Module("l2.1", { deps: ["l1"] }),
+      new Module("l2.2", { deps: ["l1"] }),
+      new Module("l3", { deps: ["l2.1", "l2.2"] }),
+    ];
+    expect(() => {
+      ModuleGraph.resolve(...modules);
+    }).not.toThrow();
+  });
 });
