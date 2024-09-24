@@ -371,6 +371,8 @@ func (r *Resource) getJobStatus(name string) (RsStatus, error) {
 	switch condition.Type {
 	case "Complete":
 		return RsStatusSucceeded, nil
+	case "SuccessCriteriaMet":
+		return RsStatusSucceeded, nil
 	case "Failed":
 		return RsStatusFailed, nil
 	}

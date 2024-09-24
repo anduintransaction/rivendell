@@ -4,7 +4,7 @@ install:
 test: .test-project .test-utils .test-kubernetes
 
 build: test
-	goreleaser build --snapshot --rm-dist
+	goreleaser build --snapshot
 
 .test-project:
 	go test ./project -v
