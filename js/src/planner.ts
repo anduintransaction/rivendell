@@ -3,7 +3,7 @@ import { DeployStep, Plan, WaitStep } from "./common";
 import { Context } from "./context";
 import { Module } from "./module";
 import { ModuleGraph, Walker } from "./graph";
-import { prefixMultiline, toK8sYaml } from "./utils";
+import { K8sKindInstallOrder, prefixMultiline, toK8sYaml } from "./utils";
 
 export class Planner {
   ctx: Context;
@@ -14,6 +14,10 @@ export class Planner {
 
   async toPlan(m: Module): Promise<Plan> {
     const objs = await m.generator(this.ctx);
+    objs.sort((a, b) => {
+      return K8sKindInstallOrder[a.kind.toLowerCase()] -
+        K8sKindInstallOrder[b.kind.toLowerCase()];
+    });
     const deploys: DeployStep[] = objs.map((obj) => ({
       type: "deploy",
       module: m.name,
