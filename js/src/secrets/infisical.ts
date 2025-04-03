@@ -1,40 +1,48 @@
-import { ClientSettings, InfisicalClient } from "@infisical/sdk";
+import { InfisicalSDK } from "@infisical/sdk";
 import { SecretProvider } from "../context";
 
-export interface InfisicalOpt extends ClientSettings {
+export interface InfisicalOpt {
+  siteUrl: string;
+  clientId: string;
+  clientSecret: string;
   projectId: string;
   debug?: boolean;
   forceEnv?: string;
 }
 
 export class InfisicalSecretProvider implements SecretProvider {
-  client: InfisicalClient;
-  forceEnv: string | undefined;
-  projectId: string;
+  client: InfisicalSDK;
+  opts: InfisicalOpt;
 
   constructor(opts: InfisicalOpt) {
-    const { projectId, debug, forceEnv, ...rest } = opts;
-    this.forceEnv = forceEnv;
-    this.projectId = projectId;
-    this.client = new InfisicalClient({
-      ...rest,
-      logLevel: debug ? 1 : 3,
+    this.opts = opts;
+    this.client = new InfisicalSDK({
+      siteUrl: opts.siteUrl,
+    });
+  }
+
+  async doAuth(): Promise<void> {
+    await this.client.auth().universalAuth.login({
+      clientId: this.opts.clientId,
+      clientSecret: this.opts.clientSecret,
     });
   }
 
   getTargetEnv(env: string): string {
-    return this.forceEnv || env;
+    return this.opts.forceEnv || env;
   }
 
   async get(env: string, name: string) {
     const parts = name.split("/");
     const [secretName, ...paths] = parts.reverse();
-    const secret = await this.client.getSecret({
-      projectId: this.projectId,
+    const secret = await this.client.secrets().getSecret({
+      projectId: this.opts.projectId,
       secretName: secretName,
       environment: this.getTargetEnv(env),
-      path: `/${paths.reverse().join("/")}`,
+      secretPath: `/${paths.reverse().join("/")}`,
       type: "shared",
+      expandSecretReferences: true,
+      viewSecretValue: true,
     });
     return {
       name: name,
@@ -43,14 +51,15 @@ export class InfisicalSecretProvider implements SecretProvider {
   }
 
   async getPrefix(env: string, prefix: string) {
-    const secrets = await this.client.listSecrets({
-      projectId: this.projectId,
+    const secrets = await this.client.secrets().listSecrets({
+      projectId: this.opts.projectId,
       environment: this.getTargetEnv(env),
-      path: `/${prefix}`,
-      attachToProcessEnv: false,
+      secretPath: `/${prefix}`,
+      expandSecretReferences: true,
+      viewSecretValue: true,
       includeImports: false,
     });
-    return secrets.map((s) => ({
+    return secrets.secrets.map((s) => ({
       name: s.secretKey,
       value: s.secretValue,
     }));

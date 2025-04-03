@@ -7,6 +7,10 @@ export class StaticSecretProvider implements SecretProvider {
     this.secrets = secrets;
   }
 
+  async doAuth(): Promise<void> {
+    return;
+  }
+
   get(_: string, name: string): Promise<SecretValue> {
     const paths = name.split("/");
     const secretName = paths[paths.length - 1];
