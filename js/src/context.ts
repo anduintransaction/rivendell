@@ -4,11 +4,16 @@ export interface SecretValue {
 }
 
 export interface SecretProvider {
+  doAuth(): Promise<void>;
   get(env: string, name: string): Promise<SecretValue>;
   getPrefix(env: string, prefix: string): Promise<SecretValue[]>;
 }
 
 export class NoopSecretProvider implements SecretProvider {
+  async doAuth(): Promise<void> {
+    return;
+  }
+
   get(_: string, name: string): Promise<SecretValue> {
     const paths = name.split("/");
     const secretName = paths[paths.length - 1];
