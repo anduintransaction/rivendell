@@ -46,16 +46,44 @@ export class ModuleGraph {
       throw new Error("Cyclic detected in graph. No root node exists");
     }
 
-    for (const candidate of this.roots) {
-      for (const item of Walker.bfs(this, candidate)) {
-        const children = this.children[item.m.name];
-        for (const child of children) {
-          if (item.visited[child]) {
-            throw new Error(
-              `cyclic detected in graph. Path started at ${candidate}`,
-            );
+    // Use a proper cycle detection algorithm with path tracking
+    const visited: Record<string, boolean> = {};
+    const recStack: Record<string, boolean> = {};
+
+    const checkCycle = (node: string): boolean => {
+      // If not visited, mark node as visited
+      if (!visited[node]) {
+        visited[node] = true;
+        recStack[node] = true;
+
+        // Check all children
+        for (const child of this.children[node]) {
+          // If child is not visited and checking the child results in a cycle
+          if (!visited[child] && checkCycle(child)) {
+            return true;
+          } // If child is in recursion stack, we found a cycle
+          else if (recStack[child]) {
+            return true;
           }
         }
+      }
+
+      // Remove from recursion stack
+      recStack[node] = false;
+      return false;
+    };
+
+    // Check from all roots
+    for (const root of this.roots) {
+      if (checkCycle(root)) {
+        throw new Error(`Cyclic detected in graph. Path started at ${root}`);
+      }
+    }
+
+    // If there are any unvisited nodes, check them too
+    for (const node in this.modules) {
+      if (!visited[node] && checkCycle(node)) {
+        throw new Error(`Cyclic detected in graph. Path started at ${node}`);
       }
     }
   }
