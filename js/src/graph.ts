@@ -146,14 +146,29 @@ interface WalkerItem {
 
 export const Walker = {
   *bfs(graph: ModuleGraph, startNode?: string) {
+    // Topological sort implementation using BFS (Kahn's algorithm)
+    // 1. Calculate in-degree for each node
+    const inDegree: Record<string, number> = {};
+    for (const m in graph.modules) {
+      inDegree[m] = 0;
+    }
+
+    for (const [_, m] of Object.entries(graph.modules)) {
+      inDegree[m.name] += m.deps.length;
+    }
+
+    // 2. Enqueue nodes with in-degree of 0 (no dependencies)
     const queue: ItWalker[] = !!startNode
-      ? [{ name: startNode!, depth: 0 }]
+      ? [{ name: startNode, depth: 0 }]
       : graph.roots.map((m) => ({ name: m, depth: 0 }));
     const visited: Record<string, boolean> = {};
+
+    // Initialize visited status for all nodes
     for (const m of Object.keys(graph.modules)) {
       visited[m] = false;
     }
 
+    // 3. Process queue
     while (queue.length > 0) {
       const it = queue.shift()!;
       if (visited[it.name]) continue;
@@ -166,11 +181,13 @@ export const Walker = {
       };
       yield item;
 
-      const nonVisitedChildrens: ItWalker[] = graph
-        .children[it.name]
-        .filter((m) => !visited[m])
-        .map((m) => ({ name: m, depth: it.depth + 1 }));
-      queue.push(...nonVisitedChildrens);
+      // For each child, decrease its in-degree and add to queue if in-degree becomes 0
+      for (const child of graph.children[it.name]) {
+        inDegree[child]--;
+        if (inDegree[child] === 0) {
+          queue.push({ name: child, depth: it.depth + 1 });
+        }
+      }
     }
   },
 
