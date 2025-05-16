@@ -124,7 +124,7 @@ const modules: Module[] = [
 
 async function main() {
   const graph = ModuleGraph.resolve(...modules);
-  graph.show();
+  graph.printGraphViz();
   console.log("");
 
   const planner = new Planner(new Context("local"));

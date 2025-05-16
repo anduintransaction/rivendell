@@ -88,26 +88,6 @@ export class ModuleGraph {
     }
   }
 
-  show() {
-    console.log("# Module is printed in reverse order");
-    const printIt = (it: ItWalker) => {
-      const pad = " ".repeat(it.depth);
-      console.log(`${pad}- ${it.name}`);
-    };
-
-    const stack: ItWalker[] = this.leafs.map((m) => ({ name: m, depth: 0 }));
-    while (stack.length > 0) {
-      const it = stack.pop()!;
-      printIt(it);
-      const m = this.modules[it.name];
-      const parents: ItWalker[] = m.deps.map((d) => ({
-        name: d,
-        depth: it.depth + 1,
-      }));
-      stack.push(...parents);
-    }
-  }
-
   printGraphViz() {
     const prefix = "\t";
     const logWithPrefix = (s: string) => console.log(`${prefix}${s}`);
@@ -135,12 +115,10 @@ export class ModuleGraph {
 
 interface ItWalker {
   name: string;
-  depth: number;
 }
 
 interface WalkerItem {
   m: Module;
-  depth: number;
   visited: Record<string, boolean>;
 }
 
@@ -159,8 +137,8 @@ export const Walker = {
 
     // 2. Enqueue nodes with in-degree of 0 (no dependencies)
     const queue: ItWalker[] = !!startNode
-      ? [{ name: startNode, depth: 0 }]
-      : graph.roots.map((m) => ({ name: m, depth: 0 }));
+      ? [{ name: startNode }]
+      : graph.roots.map((m) => ({ name: m }));
     const visited: Record<string, boolean> = {};
 
     // Initialize visited status for all nodes
@@ -176,7 +154,6 @@ export const Walker = {
       visited[it.name] = true;
       const item: WalkerItem = {
         m: graph.modules[it.name],
-        depth: it.depth,
         visited: Object.assign({}, visited),
       };
       yield item;
@@ -185,7 +162,7 @@ export const Walker = {
       for (const child of graph.children[it.name]) {
         inDegree[child]--;
         if (inDegree[child] === 0) {
-          queue.push({ name: child, depth: it.depth + 1 });
+          queue.push({ name: child });
         }
       }
     }
@@ -196,8 +173,8 @@ export const Walker = {
     startNode?: string,
   ) {
     const stack: ItWalker[] = !!startNode
-      ? [{ name: startNode!, depth: 0 }]
-      : graph.roots.map((m) => ({ name: m, depth: 0 }));
+      ? [{ name: startNode }]
+      : graph.roots.map((m) => ({ name: m }));
     const visited: Record<string, boolean> = {};
     for (const m of Object.keys(graph.modules)) {
       visited[m] = false;
@@ -210,7 +187,6 @@ export const Walker = {
       visited[it.name] = true;
       const item: WalkerItem = {
         m: graph.modules[it.name],
-        depth: it.depth,
         visited: Object.assign({}, visited),
       };
       yield item;
@@ -218,7 +194,7 @@ export const Walker = {
       const nonVisitedChildrens: ItWalker[] = graph
         .children[it.name]
         .filter((m) => !visited[m])
-        .map((m) => ({ name: m, depth: it.depth + 1 }));
+        .map((m) => ({ name: m }));
       stack.push(...nonVisitedChildrens);
     }
   },
