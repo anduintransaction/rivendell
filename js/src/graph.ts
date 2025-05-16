@@ -108,6 +108,21 @@ export class ModuleGraph {
     }
   }
 
+  printGraphViz() {
+    const prefix = "\t";
+    const logWithPrefix = (s: string) => console.log(`${prefix}${s}`);
+    const logEdge = (from: string, to: string) =>
+      logWithPrefix(`"${from}" -> "${to}";`);
+
+    console.log("digraph DependencyGraph {");
+    logWithPrefix("rankdir=LR;");
+    for (const name in this.modules) {
+      const m = this.modules[name];
+      m.deps.forEach((d) => logEdge(d, name));
+    }
+    console.log("}");
+  }
+
   static resolve(...modules: Module[]): ModuleGraph {
     modules.sort((a, b) => a.name.localeCompare(b.name));
     const graph = new ModuleGraph();
