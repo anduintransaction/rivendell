@@ -1,4 +1,4 @@
-import { InfisicalSDK } from "@infisical/sdk";
+import { InfisicalSDK, SecretType } from "@infisical/sdk";
 import { SecretProvider } from "../context";
 
 export interface InfisicalOpt {
@@ -40,7 +40,7 @@ export class InfisicalSecretProvider implements SecretProvider {
       secretName: secretName,
       environment: this.getTargetEnv(env),
       secretPath: `/${paths.reverse().join("/")}`,
-      type: "shared",
+      type: SecretType.Shared,
       expandSecretReferences: true,
       viewSecretValue: true,
     });
