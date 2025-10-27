@@ -123,7 +123,7 @@ export class KubeRunner extends Runner {
   waitForFdbCluster(name: string, timeout: number = 300) {
     const args = [...this.commonArgs(), "wait"];
     args.push(`--timeout=${timeout}s`);
-    args.push(`--for='jsonpath={.status.health.available}=true'`);
+    args.push(`--for=jsonpath={.status.health.available}=true`);
     args.push(`foundationdbclusters/${name}`);
     execFileSync(KubeRunner.KUBECTL_BIN, args, {
       stdio: ["ignore", "inherit", "inherit"],
