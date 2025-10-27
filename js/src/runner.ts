@@ -120,6 +120,16 @@ export class KubeRunner extends Runner {
     });
   }
 
+  waitForFdbCluster(name: string, timeout: number = 300) {
+    const args = [...this.commonArgs(), "wait"];
+    args.push(`--timeout=${timeout}s`);
+    args.push(`--for='jsonpath={.status.health.available}=true'`);
+    args.push(`foundationdbclusters/${name}`);
+    execFileSync(KubeRunner.KUBECTL_BIN, args, {
+      stdio: ["ignore", "inherit", "inherit"],
+    });
+  }
+
   async wait(w: WaitStep) {
     switch (w.wait.kind.toLowerCase()) {
       case "job": {
@@ -130,6 +140,12 @@ export class KubeRunner extends Runner {
       case "deployment":
       case "statefulset": {
         this.waitForRollout(w.wait.name, w.wait.kind, w.wait.timeout);
+        break;
+      }
+
+      case "foundationdbcluster":
+      case "foundationdbclusters": {
+        this.waitForFdbCluster(w.wait.name, w.wait.timeout);
         break;
       }
 
