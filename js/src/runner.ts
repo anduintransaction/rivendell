@@ -130,6 +130,16 @@ export class KubeRunner extends Runner {
     });
   }
 
+  waitForDoriscluster(name: string, timeout: number = 300) {
+    const args = [...this.commonArgs(), "wait"];
+    args.push(`--timeout=${timeout}s`);
+    args.push(`--for=jsonpath={.status.clusterHealth.health}=green`);
+    args.push(`dorisdisaggregatedclusters/${name}`);
+    execFileSync(KubeRunner.KUBECTL_BIN, args, {
+      stdio: ["ignore", "inherit", "inherit"],
+    });
+  }
+
   async wait(w: WaitStep) {
     switch (w.wait.kind.toLowerCase()) {
       case "job": {
@@ -148,6 +158,11 @@ export class KubeRunner extends Runner {
         this.waitForFdbCluster(w.wait.name, w.wait.timeout);
         break;
       }
+
+      case "dorisdisaggregatedcluster":
+      case "dorisdisaggregatedclusters":
+        this.waitForDoriscluster(w.wait.name, w.wait.timeout);
+        break;
 
       default: {
         const msg =
