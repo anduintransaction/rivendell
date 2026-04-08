@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           cd ./js
-          bun install
+          bun install --frozen-lockfile
 
       - name: Build
         run: |
