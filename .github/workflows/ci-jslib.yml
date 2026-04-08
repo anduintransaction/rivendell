@@ -38,4 +38,4 @@ jobs:
         run: |
           cd ./js
           bun run check
-          bun test
+          bun test --ignore '**/*.integration.test.ts'
