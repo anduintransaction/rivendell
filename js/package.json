@@ -1,6 +1,6 @@
 {
   "name": "@anduintransaction/rivendell",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/anduintransaction/rivendell.git"
@@ -23,7 +23,7 @@
   "devDependencies": {
     "@types/node": "^20.9.4",
     "esbuild": "^0.25.11",
-    "npm-dts": "^1.1.6",
+    "npm-dts": "^1.3.13",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
@@ -32,8 +32,11 @@
     "@kubernetes-models/base": "^5.0.1"
   },
   "dependencies": {
-    "@infisical/sdk": "^5.0.0",
+    "@infisical/sdk": "^5.0.2",
     "chalk": "^4.1.2",
     "yaml": "^2.3.4"
+  },
+  "overrides": {
+    "tmp": "0.2.7"
   }
 }
